@@ -29,7 +29,7 @@ export function QuickAddApplicantModal({ isOpen, onClose, onAdd, jobOpenings = [
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.applicant_name || !formData.email_id) return;
+    if (!formData.applicant_name || !formData.email_id || !formData.job_title) return;
     onAdd(formData);
   };
 
@@ -79,13 +79,14 @@ export function QuickAddApplicantModal({ isOpen, onClose, onAdd, jobOpenings = [
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1.5">Target Job Opening</label>
+          <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1.5">Target Job Opening *</label>
           <select
+            required
             value={formData.job_title}
             onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
             className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
           >
-            <option value="">Select Job Opening (Optional)</option>
+            <option value="">{selectableJobs.length ? 'Select Job Opening' : 'No open job openings - create or publish one first'}</option>
             {selectableJobs.map(job => (
               <option key={job.name} value={job.name}>
                 {job.job_title || job.name}

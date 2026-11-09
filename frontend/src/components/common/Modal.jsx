@@ -2,7 +2,10 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
-export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth = 'max-w-2xl' }) {
+// Clicking the dark backdrop used to close the modal and wipe whatever the
+// user had typed. Forms now stay open; use the X, Cancel or Escape instead.
+// Pass closeOnBackdrop for simple read-only dialogs.
+export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth = 'max-w-2xl', closeOnBackdrop = false }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) onClose();
@@ -24,7 +27,7 @@ export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth = '
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" 
-        onClick={onClose} 
+        onClick={closeOnBackdrop ? onClose : undefined} 
       />
 
       {/* Modal Container */}

@@ -367,13 +367,32 @@ def _get_letter_html(letter_type, sep_doc, emp_doc):
         """
         
     template_html = template_doc[0].template_html
-    
+
+    # Gender-aware wording. Stored templates hardcode "Mr." / he / his / him, so
+    # a female employee got "Mr." and "he" in her letters. Swap those known
+    # phrases for variables, then render with the employee's actual gender.
+    gender = (emp_doc.get("gender") or "").strip().lower()
+    if gender == "female":
+        people = {"salutation": "Ms.", "sub": "she", "obj": "her", "poss": "her", "was": "was"}
+    elif gender == "male":
+        people = {"salutation": "Mr.", "sub": "he", "obj": "him", "poss": "his", "was": "was"}
+    else:
+        people = {"salutation": "", "sub": "they", "obj": "them", "poss": "their", "was": "were"}
+    for old_txt, new_txt in (
+        ("Mr. {{ emp_doc.employee_name }}", "{{ salutation }} {{ emp_doc.employee_name }}".strip()),
+        ("During his above tenure he was diligent & honest in his duties", "During {{ poss }} above tenure {{ sub }} {{ was }} diligent & honest in {{ poss }} duties"),
+        ("During his above tenure he was", "During {{ poss }} above tenure {{ sub }} {{ was }}"),
+        ("wish him success in all his future", "wish {{ obj }} success in all {{ poss }} future"),
+    ):
+        template_html = template_html.replace(old_txt, new_txt)
+
     # Render with Jinja
     context = {
         "emp_doc": emp_doc,
         "sep_doc": sep_doc,
         "frappe": frappe,
-        "format_date_with_ordinal": format_date_with_ordinal
+        "format_date_with_ordinal": format_date_with_ordinal,
+        **people,
     }
     
     rendered_body = frappe.render_template(template_html, context)

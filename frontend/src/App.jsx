@@ -116,7 +116,25 @@ export function AppContent() {
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   // Template State
-  const [editingTemplate, setEditingTemplate] = useState({ type: null, name: null });
+  // Template editor state lives in the URL hash so a refresh stays on the same
+  // list tab or the same form: #/templates/<onboarding|separation>[/new|/edit/<name>]
+  const parseTemplateHash = () => {
+    const parts = window.location.hash.replace(/^#\/?/, '').split('/');
+    if (parts[0] !== 'templates') return { type: null, name: null, listTab: 'Onboarding' };
+    const type = parts[1] === 'separation' ? 'Separation' : parts[1] === 'onboarding' ? 'Onboarding' : null;
+    if (type && parts[2] === 'new') return { type, name: null, listTab: type };
+    if (type && parts[2] === 'edit' && parts[3]) return { type, name: decodeURIComponent(parts.slice(3).join('/')), listTab: type };
+    return { type: null, name: null, listTab: type || 'Onboarding' };
+  };
+  const [editingTemplate, setEditingTemplateState] = useState(() => {
+    const t = parseTemplateHash();
+    return { type: t.type, name: t.name };
+  });
+  const [templateListTab, setTemplateListTab] = useState(() => parseTemplateHash().listTab);
+  const openTemplateRoute = (hash, state) => {
+    window.history.pushState(null, '', hash);
+    setEditingTemplateState(state);
+  };
 
   // Offer Letters State
   const [offerLetters, setOfferLetters] = useState([]);
@@ -288,7 +306,7 @@ export function AppContent() {
     'templates', 'diagnostics',
   ];
   const hashTab = () => {
-    const h = window.location.hash.replace(/^#\/?/, '');
+    const h = window.location.hash.replace(/^#\/?/, '').split('/')[0];
     return VALID_TABS.includes(h) ? h : null;
   };
   useEffect(() => {
@@ -297,6 +315,9 @@ export function AppContent() {
     const onPop = () => {
       const t = hashTab();
       if (t) setActiveTab(t);
+      const tpl = parseTemplateHash();
+      setEditingTemplateState({ type: tpl.type, name: tpl.name });
+      setTemplateListTab(tpl.listTab);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -310,6 +331,7 @@ export function AppContent() {
     // land on a blank duplicate of the same page.
     if (!current) window.history.replaceState(null, '', `#/${activeTab}`);
     else window.history.pushState(null, '', `#/${activeTab}`);
+    if (activeTab === 'templates') setEditingTemplateState({ type: null, name: null });
   }, [activeTab, isPublicCandidateMode, isInterviewFeedbackMode, isPublicOnboardingMode, isPublicExitMode, isPublicCareersMode]);
 
   useEffect(() => {
@@ -691,14 +713,20 @@ export function AppContent() {
           {activeTab === 'templates' && (
             editingTemplate.type ? (
               <TemplateFormPage
+                key={`${editingTemplate.type}:${editingTemplate.name || 'new'}`}
                 templateType={editingTemplate.type}
                 templateName={editingTemplate.name}
-                onBack={() => setEditingTemplate({ type: null, name: null })}
+                onBack={() => openTemplateRoute(`#/templates/${editingTemplate.type.toLowerCase()}`, { type: null, name: null })}
               />
             ) : (
               <TemplateListPage
-                onCreate={(type) => setEditingTemplate({ type, name: null })}
-                onEdit={(type, name) => setEditingTemplate({ type, name })}
+                initialTab={templateListTab}
+                onTabChange={(tab) => {
+                  setTemplateListTab(tab);
+                  window.history.replaceState(null, '', `#/templates/${tab.toLowerCase()}`);
+                }}
+                onCreate={(type) => openTemplateRoute(`#/templates/${type.toLowerCase()}/new`, { type, name: null })}
+                onEdit={(type, name) => openTemplateRoute(`#/templates/${type.toLowerCase()}/edit/${encodeURIComponent(name)}`, { type, name })}
               />
             )
           )}

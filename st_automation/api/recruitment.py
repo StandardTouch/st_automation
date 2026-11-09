@@ -1219,6 +1219,8 @@ def quick_add_applicant(applicant_name, email_id, phone_number=None, job_title=N
 	try:
 		if not applicant_name or not email_id:
 			return error_response("Candidate Name and Email are required.")
+		if not job_title:
+			return error_response("Please select a target job opening for this candidate.")
 
 		applicant_name = applicant_name.strip()
 		email_id = email_id.strip()
