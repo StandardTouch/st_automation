@@ -32,6 +32,15 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import './index.css';
 
+// Date/time inputs only opened their calendar from the tiny icon; clicking the
+// text part did nothing. Open the native picker on any click of the field.
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  if (t instanceof HTMLInputElement && ['date', 'datetime-local', 'time', 'month'].includes(t.type) && !t.readOnly && !t.disabled) {
+    try { t.showPicker && t.showPicker(); } catch (_) { /* already open or not allowed */ }
+  }
+});
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <GlobalErrorBoundary><App /></GlobalErrorBoundary>

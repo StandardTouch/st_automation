@@ -51,11 +51,14 @@ export function ApplicantDetailModal({
   const [scheduledInterviews, setScheduledInterviews] = useState([]);
   const [isLoadingInterviews, setIsLoadingInterviews] = useState(false);
 
+  // Reload every time the drawer opens, not only when the applicant changes:
+  // reopening the same candidate used to show the previously cached interviews.
   useEffect(() => {
-    if (applicant?.name) {
+    if (isOpen && applicant?.name) {
+      setScheduledInterviews([]);
       loadInterviews();
     }
-  }, [applicant?.name]);
+  }, [isOpen, applicant?.name]);
 
   const loadInterviews = async () => {
     setIsLoadingInterviews(true);
@@ -203,7 +206,10 @@ export function ApplicantDetailModal({
                     <div className="flex items-center gap-4 text-right">
                       <div>
                         <span className="text-[12px] uppercase font-bold text-gray-400 dark:text-slate-500 block mb-0.5">Interviewers</span>
-                        <div className="flex -space-x-2">
+                        <div className="text-[13px] font-semibold text-gray-800 dark:text-slate-100 mb-1 max-w-[220px]">
+                          {(iv.interviewer_names && iv.interviewer_names.length ? iv.interviewer_names : iv.interviewers || []).join(', ') || 'Not assigned'}
+                        </div>
+                        <div className="flex -space-x-2 justify-end">
                           {iv.interviewers?.map((emp, i) => (
                             <div key={i} className="w-6 h-6 rounded-full bg-brand-red text-white flex items-center justify-center text-[12px] font-bold border-2 border-white ring-1 ring-gray-100" title={emp}>
                               {emp.substring(0, 2).toUpperCase()}
@@ -433,6 +439,16 @@ export function ApplicantDetailModal({
               >
                 Reject
               </Button>
+
+              {!applicant.employee && (
+                <Button
+                  variant="secondary"
+                  isLoading={isActionLoading}
+                  onClick={() => handleTriggerDecision('Bench')}
+                >
+                  Talent Pool / Bench
+                </Button>
+              )}
 
               <Button
                 variant="secondary"

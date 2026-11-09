@@ -143,6 +143,18 @@ def setup_custom_fields():
 				"insert_after": "interview_duration_mins",
 			},
 		],
+		"Job Offer": [
+			{"fieldname": "st_section_offer", "label": "StandardTouch Offer Terms", "fieldtype": "Section Break", "insert_after": "company"},
+			{"fieldname": "candidate_name", "label": "Candidate Name", "fieldtype": "Data", "insert_after": "st_section_offer"},
+			{"fieldname": "employee", "label": "Employee", "fieldtype": "Link", "options": "Employee", "insert_after": "candidate_name"},
+			{"fieldname": "training_duration", "label": "Training Duration", "fieldtype": "Data", "insert_after": "employee"},
+			{"fieldname": "training_stipend", "label": "Training Stipend", "fieldtype": "Data", "insert_after": "training_duration"},
+			{"fieldname": "salary_range", "label": "Salary Range", "fieldtype": "Data", "insert_after": "training_stipend"},
+			{"fieldname": "contract_duration", "label": "Contract Duration", "fieldtype": "Data", "insert_after": "salary_range"},
+			{"fieldname": "reporting_manager", "label": "Reporting Manager", "fieldtype": "Data", "insert_after": "contract_duration"},
+			{"fieldname": "hr_signatory_name", "label": "HR Signatory Name", "fieldtype": "Data", "insert_after": "reporting_manager"},
+			{"fieldname": "responsibilities_text", "label": "Responsibilities", "fieldtype": "Small Text", "insert_after": "hr_signatory_name"},
+		],
 	}
 
 	try:

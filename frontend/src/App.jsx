@@ -9,6 +9,7 @@ import { recruitmentApi } from './api/recruitmentApi';
 import { payrollApi } from './api/payrollApi';
 import { onboardingApi } from './api/onboardingApi';
 import { exitApi } from './api/exitApi';
+import { uploadFile } from './api/client';
 
 // Onboarding & Exit Views
 import { OnboardingPipelineView } from './modules/onboarding/OnboardingPipelineView';
@@ -276,11 +277,48 @@ export function AppContent() {
     }
   }, [selectedCompany]);
 
+  // Keep the active tab in the URL hash and browser history so the back
+  // button / swipe-back moves between HR Ops pages instead of leaving the app
+  // (previously it dropped the user onto the Frappe desk).
+  const VALID_TABS = [
+    'recruitment-pipeline', 'job-openings', 'my-interviews', 'offer-letters',
+    'onboarding-pipeline', 'exit-pipeline', 'payroll-command', 'run-payroll',
+    'loans', 'salary-slips', 'staff-feedback', 'my-feedback', 'feedback-analytics',
+    'templates', 'diagnostics',
+  ];
+  const hashTab = () => {
+    const h = window.location.hash.replace(/^#\/?/, '');
+    return VALID_TABS.includes(h) ? h : null;
+  };
+  useEffect(() => {
+    const fromHash = hashTab();
+    if (fromHash) setActiveTab((prev) => prev || fromHash);
+    const onPop = () => {
+      const t = hashTab();
+      if (t) setActiveTab(t);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  useEffect(() => {
+    if (!activeTab || !VALID_TABS.includes(activeTab)) return;
+    if (isPublicCandidateMode || isInterviewFeedbackMode || isPublicOnboardingMode || isPublicExitMode || isPublicCareersMode) return;
+    const current = hashTab();
+    if (current === activeTab) return;
+    // First tab selection (no hash yet) replaces the entry so back does not
+    // land on a blank duplicate of the same page.
+    if (!current) window.history.replaceState(null, '', `#/${activeTab}`);
+    else window.history.pushState(null, '', `#/${activeTab}`);
+  }, [activeTab, isPublicCandidateMode, isInterviewFeedbackMode, isPublicOnboardingMode, isPublicExitMode, isPublicCareersMode]);
+
   useEffect(() => {
     if (!isPublicCandidateMode && !isPublicOnboardingMode && !isPublicExitMode) {
-      if (activeTab === 'recruitment') loadRecruitment();
-      if (activeTab === 'payroll') loadPayroll();
-      if (activeTab === 'system') loadDiagnostics();
+      // Tab ids are 'recruitment-pipeline' etc.; the old checks compared
+      // against names that never matched, so these views kept showing data
+      // fetched at page load (stale cache) until a full refresh.
+      if (['recruitment-pipeline', 'job-openings', 'my-interviews'].includes(activeTab)) loadRecruitment();
+      if (['payroll-command', 'run-payroll', 'loans', 'salary-slips'].includes(activeTab)) loadPayroll();
+      if (activeTab === 'diagnostics') loadDiagnostics();
       if (activeTab === 'onboarding-pipeline') loadOnboarding();
       if (activeTab === 'exit-pipeline') loadExit();
       if (activeTab === 'offer-letters') loadOfferLetters();
@@ -333,7 +371,15 @@ export function AppContent() {
   const handleQuickAddApplicant = async (formData) => {
     setIsActionLoading(true);
     try {
-      const res = await recruitmentApi.quickAddApplicant(formData);
+      // The resume File used to be kept in form state and silently dropped:
+      // only `resume_attachment` (a URL) reaches the API, so the candidate
+      // was created with "No resume attached". Upload first, then pass the URL.
+      const { resume_file, ...payload } = formData;
+      if (resume_file) {
+        const uploaded = await uploadFile(resume_file, { isPrivate: true });
+        payload.resume_attachment = uploaded.file_url;
+      }
+      const res = await recruitmentApi.quickAddApplicant(payload);
       addToast(res.message || 'Candidate added to pipeline!', 'success');
       setIsQuickAddOpen(false);
       loadRecruitment();

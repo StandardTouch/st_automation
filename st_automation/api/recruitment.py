@@ -692,6 +692,11 @@ def get_applicant_interviews(applicant_id):
 		for iv in interviews:
 			details = frappe.get_all("Interview Detail", filters={"parent": iv.name}, fields=["interviewer"])
 			iv["interviewers"] = [d.interviewer for d in details]
+			# Human-readable names so the UI can show who the interview is
+			# assigned to, not just two-letter initials of an email address.
+			iv["interviewer_names"] = [
+				frappe.db.get_value("User", u, "full_name") or u for u in iv["interviewers"]
+			]
 
 			# Fetch feedbacks from Comments on the Interview
 			iv["feedbacks"] = []

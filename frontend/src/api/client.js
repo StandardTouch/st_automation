@@ -34,9 +34,13 @@ export async function uploadFile(file, { isPrivate = true, doctype, docname } = 
   const data = await response.json();
 
   if (!response.ok) {
-    const errorMsg = data._server_messages
+    let errorMsg = data._server_messages
       ? parseServerMessages(data._server_messages)
       : data.message || data.exception || `Upload failed with status ${response.status}`;
+    // Never show raw Python errors (e.g. pypdf.errors.PdfReadError) to users.
+    if (/pypdf|PdfReadError|startxref|Traceback|Exception/i.test(String(errorMsg))) {
+      errorMsg = 'This file looks corrupted or is not a valid document. Please upload a valid PDF, DOC or DOCX file.';
+    }
     throw new Error(errorMsg);
   }
 
