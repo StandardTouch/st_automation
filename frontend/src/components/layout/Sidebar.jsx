@@ -82,7 +82,7 @@ export function Sidebar({ activeTab, setActiveTab, userProfile, isMobileOpen, se
             <Users2 className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col justify-center gap-0.5">
-            <h1 className="font-bold text-brand-black dark:text-slate-50 tracking-tight leading-none text-[16px]">Standard Touch</h1>
+            <div className="font-bold text-brand-black dark:text-slate-50 tracking-tight leading-none text-[16px]">Standard Touch</div>
             <span className="text-[11px] font-bold text-brand-red uppercase tracking-widest leading-none">HR Operations</span>
           </div>
         </div>

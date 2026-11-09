@@ -600,6 +600,7 @@ export function AppContent() {
 
         {/* View Canvas */}
         <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto animate-fade-in">
+          <h1 className="sr-only">Standard Touch HR Operations</h1>
           {/* Recruitment Views */}
           {activeTab === 'recruitment-pipeline' && (
             <KanbanBoard

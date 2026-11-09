@@ -8,6 +8,7 @@ import { SlideOver } from '../../components/common/SlideOver';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatDate, formatDateTime, callApi, uploadFile } from '../../api/client';
+import { formatRatingSummary } from './KanbanBoard';
 import { recruitmentApi } from '../../api/recruitmentApi';
 import { useToast } from '../../components/common/Toast';
 import EmployeeSelect from '../../components/EmployeeSelect';
@@ -194,7 +195,7 @@ export function ApplicantDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       title={applicant.applicant_name}
-      subtitle={applicant.job_title || 'Applicant Profile'}
+      subtitle={applicant.job_opening_title || applicant.job_title || 'Applicant Profile'}
       width="max-w-4xl"
     >
       <div className="space-y-6 pb-24">
@@ -407,7 +408,7 @@ export function ApplicantDetailModal({
               <span>Interviewer Feedback Summary</span>
             </div>
             <p className="text-sm text-gray-800 dark:text-slate-100 bg-white dark:bg-slate-800 p-3 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
-              {applicant.interview_rating_summary}
+              {formatRatingSummary(applicant.interview_rating_summary)}
             </p>
           </div>
         )}

@@ -165,7 +165,7 @@ export function StartOnboardingModal({ isOpen, onClose, company, onSuccess }) {
             >
               <option value="">Auto-select for company</option>
               {templates.map(t => (
-                <option key={t.name} value={t.name}>{t.title || t.name}</option>
+                <option key={t.name} value={t.name}>{t.title || t.name} · {t.name}</option>
               ))}
             </select>
           </div>

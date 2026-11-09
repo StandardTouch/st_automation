@@ -19,6 +19,7 @@ export function TopHeader({
         {/* Mobile Menu Button */}
         <button
           onClick={() => setIsMobileOpen(true)}
+          aria-label="Open menu"
           className="lg:hidden p-2 rounded-xl text-brand-grey hover:bg-gray-100 dark:bg-slate-800 hover:text-brand-black dark:text-slate-50 transition-colors"
         >
           <Menu className="h-5 w-5" />

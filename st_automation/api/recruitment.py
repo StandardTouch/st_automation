@@ -102,6 +102,11 @@ def get_pipeline(job_opening=None, search=None, company=None):
 			limit=300
 		)
 
+		# Human-readable job title (job_title holds the Job Opening ID).
+		_titles = {j.name: j.job_title for j in frappe.get_all("Job Opening", fields=["name", "job_title"])}
+		for a in applicants:
+			a["job_opening_title"] = _titles.get(a.job_title) or a.job_title
+
 		if search:
 			q = search.lower()
 			applicants = [
@@ -619,6 +624,7 @@ def get_applicant_details(applicant_id):
 			"email_id": doc.email_id,
 			"phone_number": doc.phone_number,
 			"job_title": doc.job_title,
+			"job_opening_title": (frappe.db.get_value("Job Opening", doc.job_title, "job_title") if doc.job_title else None) or doc.job_title,
 			"status": doc.status,
 			"stage": doc.status,
 			"creation": doc.creation,

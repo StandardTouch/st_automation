@@ -506,7 +506,7 @@ Providing technical support and troubleshooting for ERP systems to end-users`
                     setSelectedOffer(null);
                     setPreviewHtml('');
                   }}
-                  className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+                  aria-label="Close preview" className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -515,7 +515,7 @@ Providing technical support and troubleshooting for ERP systems to end-users`
 
             {/* Document Render Canvas */}
             <div className="flex-1 overflow-y-auto p-2 sm:p-8 bg-gray-100 dark:bg-slate-950 flex justify-center">
-              <div className="bg-white shadow-xl max-w-[850px] w-full p-4 sm:p-12 min-h-full rounded border border-gray-200 overflow-x-auto">
+              <div style={{ color: '#111827', backgroundColor: '#ffffff' }} className="bg-white shadow-xl max-w-[850px] w-full p-4 sm:p-12 min-h-full rounded border border-gray-200 overflow-x-auto">
                 <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
               </div>
             </div>

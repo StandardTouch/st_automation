@@ -38,6 +38,7 @@ export function SlideOver({ isOpen, onClose, title, subtitle, children, width = 
             </div>
             <button
               onClick={onClose}
+              aria-label="Close"
               className="rounded-lg p-2 text-brand-grey hover:bg-gray-100 dark:bg-slate-800 hover:text-brand-black dark:text-slate-50 transition-colors"
             >
               <X className="h-5 w-5" />
