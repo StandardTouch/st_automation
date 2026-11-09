@@ -137,6 +137,10 @@ def quick_add_incentive(employee, amount, salary_component=None, payroll_date=No
 		amt = safe_float(amount)
 		if amt <= 0:
 			return error_response("Incentive amount must be greater than zero.")
+		if amt > 10000000:
+			return error_response("Incentive amount is unrealistically large. Please check the figure.")
+		if not frappe.db.exists("Employee", employee):
+			return error_response(f"Employee {employee} not found.")
 
 		recurring = bool(cint(is_recurring))
 		if recurring and not from_date:
@@ -223,6 +227,9 @@ def bulk_add_incentives(incentives):
 			if not emp or amt <= 0:
 				errors.append(f"Row {idx+1}: Missing employee or invalid amount.")
 				continue
+			if not frappe.db.exists("Employee", emp):
+				errors.append(f"Row {idx+1}: Employee {emp} not found.")
+				continue
 
 			try:
 				doc = frappe.new_doc("Additional Salary")
@@ -239,10 +246,15 @@ def bulk_add_incentives(incentives):
 				errors.append(f"Employee {emp}: {str(row_err)}")
 
 		frappe.db.commit()
+		if not created_records:
+			return error_response("No bonus entries were recorded. " + " | ".join(errors[:3]))
+		msg = f"Successfully recorded {len(created_records)} bonus entries!"
+		if errors:
+			msg += f" {len(errors)} row(s) failed: " + " | ".join(errors[:3])
 		return success_response({
 			"created_count": len(created_records),
 			"errors": errors
-		}, message=f"Successfully recorded {len(created_records)} bonus entries!")
+		}, message=msg)
 	except Exception as e:
 		return error_response(f"Error in bulk bonus entry: {str(e)}", e)
 
@@ -258,6 +270,8 @@ def get_loan_preview(employee, amount, tenure_months, loan_product=None):
 		tenure = safe_int(tenure_months, 12)
 		if amt <= 0 or tenure <= 0:
 			return error_response("Amount and tenure must be positive numbers.")
+		if tenure > 120:
+			return error_response("Tenure cannot exceed 120 months (10 years).")
 
 		emp_data = frappe.db.get_value("Employee", employee, ["employee_name", "company", "department", "designation"], as_dict=True)
 		if not emp_data:
@@ -474,6 +488,8 @@ def run_payroll_and_report(company, start_date, end_date, cost_center=None):
 			return error_response("Company is required.")
 		if not start_date or not end_date:
 			return error_response("Start date and end date are required.")
+		if getdate(end_date) < getdate(start_date):
+			return error_response("End date cannot be before the start date.")
 
 		# Self-healing: Ensure company has a default payroll payable account
 		company_doc = frappe.get_doc("Company", company)

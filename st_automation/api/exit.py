@@ -1,6 +1,6 @@
 import frappe
 from frappe.utils import now_datetime, add_to_date, nowdate, getdate
-from st_automation.api.utils import success_response, error_response, generate_secure_token, get_hr_manager_emails
+from st_automation.api.utils import success_response, error_response, generate_secure_token, get_hr_manager_emails, validate_assignable_user, clean_comment
 
 def get_site_exit_url(token):
     base_url = frappe.utils.get_url()
@@ -125,6 +125,13 @@ def start_separation(employee, template=None, resignation_date=None, relieving_d
         emp_doc = frappe.get_doc("Employee", employee)
         if emp_doc.status != "Active":
             return error_response(f"Employee {emp_doc.employee_name} is not Active (current status: {emp_doc.status}).")
+
+        # Date sanity: resignation cannot precede joining; relieving cannot precede resignation.
+        resign = getdate(resignation_date) if resignation_date else getdate(nowdate())
+        if emp_doc.date_of_joining and resign < getdate(emp_doc.date_of_joining):
+            return error_response("Resignation date cannot be before the employee's joining date.")
+        if relieving_date and getdate(relieving_date) < resign:
+            return error_response("Relieving date cannot be before the resignation date.")
 
         # Prevent duplicate
         existing = frappe.db.exists("Employee Separation", {
@@ -264,8 +271,9 @@ def assign_task(task_name, user):
     try:
         if not frappe.db.exists("Task", task_name):
             return error_response("Task not found.")
-        if not frappe.db.exists("User", user):
-            return error_response("User not found.")
+        user_err = validate_assignable_user(user)
+        if user_err:
+            return error_response(user_err)
 
         from frappe.desk.form.assign_to import add as add_assign
         add_assign({
@@ -287,6 +295,9 @@ def add_task_comment(task_name, comment):
         if not frappe.db.exists("Task", task_name):
             return error_response("Task not found.")
 
+        comment, comment_err = clean_comment(comment)
+        if comment_err:
+            return error_response(comment_err)
         frappe.get_doc("Task", task_name).add_comment("Comment", comment)
         frappe.db.commit()
         return success_response(message="Comment added successfully.")

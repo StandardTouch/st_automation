@@ -1,8 +1,16 @@
 import frappe
 from frappe import _
 from frappe.utils import today, add_days, getdate
+from frappe.rate_limiter import rate_limit
+
+VALID_FEEDBACK_TYPES = (
+	"General Feedback", "Work Environment", "Management", "Team & Collaboration",
+	"Process Improvement", "Appreciation",
+)
+
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=15, seconds=3600)
 def submit_feedback(feedback_type, feedback, rating=5, title=None, is_anonymous=1, attachment=None, company=None):
 	"""
 	Submit a staff feedback.
@@ -10,6 +18,21 @@ def submit_feedback(feedback_type, feedback, rating=5, title=None, is_anonymous=
 	"""
 	user = frappe.session.user
 	is_anon = 1 if (is_anonymous in (1, "1", True, "true")) else 0
+
+	# --- validation: reject bad input instead of storing it ---
+	feedback = (feedback or "").strip()
+	if not feedback:
+		frappe.throw("Please write your feedback before submitting.")
+	if len(feedback) > 1000:
+		frappe.throw("Feedback is too long (maximum 1000 characters).")
+	if feedback_type and feedback_type not in VALID_FEEDBACK_TYPES:
+		frappe.throw("Please choose a valid feedback category.")
+	try:
+		rating = int(rating)
+	except (ValueError, TypeError):
+		frappe.throw("Rating must be a whole number from 1 to 5.")
+	if rating < 1 or rating > 5:
+		frappe.throw("Rating must be a whole number from 1 to 5.")
 
 	# Auto-generate title if missing
 	if not title:
@@ -21,7 +44,7 @@ def submit_feedback(feedback_type, feedback, rating=5, title=None, is_anonymous=
 	doc = frappe.new_doc("Staff Feedback")
 	doc.title = title
 	doc.feedback_type = feedback_type or "General Feedback"
-	doc.rating = int(rating) if rating else 5
+	doc.rating = rating
 	doc.feedback = feedback
 	doc.status = "Open"
 	doc.date = today()

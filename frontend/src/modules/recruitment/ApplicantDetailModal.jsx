@@ -611,6 +611,19 @@ export function ApplicantDetailModal({
               {selectedDecision === 'Reconsider' && 'This will move the candidate back into the active pipeline so you can make a fresh Select / Bench / Reject decision for a new role.'}
               {selectedDecision === 'Reject' && 'This will mark candidate as Rejected and trigger a polite notification email.'}
             </p>
+            {selectedDecision === 'Select' && (
+              scheduledInterviews.length === 0 ? (
+                <p className="mt-3 text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  No interview has been scheduled for this candidate yet.
+                </p>
+              ) : !scheduledInterviews.some((iv) => iv.feedbacks && iv.feedbacks.length > 0) ? (
+                <p className="mt-3 text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  No interview feedback has been submitted yet.
+                </p>
+              ) : null
+            )}
 
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1">Optional Notes / Reason</label>

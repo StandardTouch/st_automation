@@ -427,6 +427,13 @@ def update_offer_status(offer_name, status):
 			return error_response(f"Invalid status: {status}. Must be 'Awaiting Response', 'Accepted', or 'Rejected'.")
 
 		offer = frappe.get_doc("Job Offer", offer_name)
+		if offer.status == status:
+			return success_response({"offer_name": offer.name, "status": offer.status}, message=f"Offer letter {offer.name} is already {status}.")
+		onboarded = (offer.get("employee") and frappe.db.exists("Employee", offer.get("employee"))) or (
+			offer.applicant_email and frappe.db.exists("Employee", {"personal_email": offer.applicant_email})
+		)
+		if onboarded and status != "Accepted":
+			return error_response("This candidate has already been onboarded as an employee, so the offer can no longer be changed.")
 		offer.status = status
 		offer.flags.ignore_permissions = True
 		offer.save(ignore_permissions=True)
@@ -443,7 +450,22 @@ def update_offer_status(offer_name, status):
 def render_standardtouch_offer_letter_html(offer):
 	"""Renders the exact 5-page StandardTouch Offer Letter as clean HTML/CSS for printing and PDF generation."""
 	date_str = formatdate(offer.offer_date, "dd/MM/yyyy") if offer.offer_date else nowdate()
-	
+
+	# Never print the literal word "None" for terms that were left blank
+	# (e.g. offers drafted automatically from the hiring decision). Fill the
+	# preview with the same defaults the Offer Letter form uses; the saved
+	# record is not modified.
+	for _field, _default in (
+		("training_duration", "6 months"),
+		("training_stipend", "INR 5,000/month"),
+		("salary_range", "INR 10,000 - 15,000/month"),
+		("contract_duration", "24 Months + 6 months of Training"),
+		("reporting_manager", "Mr. Abdul Nasir Mauzam Ali"),
+		("hr_signatory_name", "Muzammil Siddiqui"),
+	):
+		if not offer.get(_field):
+			offer.set(_field, _default)
+
 	# Responsibilities
 	resp_lines = [r.strip() for r in (offer.responsibilities_text or "").split("\n") if r.strip()]
 	if not resp_lines:

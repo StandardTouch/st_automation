@@ -114,3 +114,27 @@ def get_hr_manager_emails():
 		frappe.log_error(f"Error fetching HR Manager emails: {e}", "st_automation CC Helper")
 		return []
 
+
+
+def validate_assignable_user(user):
+	"""Returns an error message if `user` cannot be assigned a task, else None."""
+	if not user or not frappe.db.exists("User", user):
+		return "User not found."
+	if user in ("Guest", "Administrator"):
+		return "This user cannot be assigned tasks."
+	row = frappe.db.get_value("User", user, ["enabled", "user_type"], as_dict=True)
+	if not row.enabled:
+		return "This user account is disabled and cannot be assigned tasks."
+	if row.user_type != "System User":
+		return "Only system users can be assigned tasks."
+	return None
+
+
+def clean_comment(comment, max_len=2000):
+	"""Returns (cleaned_text, error_message)."""
+	text = (comment or "").strip()
+	if not text:
+		return None, "Please enter a comment."
+	if len(text) > max_len:
+		return None, f"Comment is too long (maximum {max_len} characters)."
+	return text, None
