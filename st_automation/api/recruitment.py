@@ -694,6 +694,9 @@ def get_applicant_interviews(applicant_id):
 			iv["interviewers"] = [d.interviewer for d in details]
 			# Human-readable names so the UI can show who the interview is
 			# assigned to, not just two-letter initials of an email address.
+			iv["interviewer_employees"] = [
+				frappe.db.get_value("Employee", {"user_id": u}, "name") for u in iv["interviewers"]
+			]
 			iv["interviewer_names"] = [
 				frappe.db.get_value("User", u, "full_name") or u for u in iv["interviewers"]
 			]
@@ -736,6 +739,95 @@ def get_applicant_interviews(applicant_id):
 		return success_response(interviews)
 	except Exception as e:
 		return error_response(f"Failed to fetch interviews: {str(e)}", e)
+
+
+def _interview_has_feedback(interview_name):
+	return bool(frappe.db.exists("Interview Feedback", {"interview": interview_name})) or bool(
+		frappe.db.exists("Comment", {"reference_doctype": "Interview", "reference_name": interview_name, "content": ["like", "Feedback from %"]})
+	)
+
+
+@frappe.whitelist()
+def update_interview(interview_id, scheduled_time=None, interviewers=None):
+	"""Reschedules an interview and/or changes its interviewers (before feedback exists)."""
+	try:
+		if not interview_id or not frappe.db.exists("Interview", interview_id):
+			return error_response("Interview not found.")
+		doc = frappe.get_doc("Interview", interview_id)
+		if doc.status != "Pending":
+			return error_response(f"This interview is already {doc.status} and can no longer be changed.")
+		if _interview_has_feedback(interview_id):
+			return error_response("Feedback has already been submitted for this interview, so it can no longer be changed.")
+
+		changes = []
+		new_schedule = None
+		if scheduled_time:
+			sched_date, sched_time = split_datetime(scheduled_time)
+			new_schedule = {
+				"scheduled_on": sched_date,
+				"from_time": sched_time,
+				"to_time": sched_time + timedelta(minutes=30),
+			}
+			changes.append(f"time to {format_datetime(scheduled_time)}")
+
+		if interviewers is not None:
+			if isinstance(interviewers, str):
+				interviewers = json.loads(interviewers)
+			if not interviewers:
+				return error_response("At least one interviewer must be selected.")
+			users = []
+			for emp in interviewers:
+				user_id = frappe.db.get_value("Employee", emp, "user_id")
+				if not user_id:
+					email = frappe.db.get_value("Employee", emp, "company_email") or frappe.db.get_value("Employee", emp, "personal_email")
+					if email and frappe.db.exists("User", email):
+						user_id = email
+				if user_id:
+					users.append(user_id)
+			if not users:
+				return error_response("None of the selected interviewers has a user account.")
+			doc.set("interview_details", [])
+			for u in users:
+				doc.append("interview_details", {"interviewer": u})
+			changes.append("interviewers to " + ", ".join(users))
+
+		if not changes:
+			return error_response("Nothing to update.")
+
+		doc.flags.ignore_permissions = True
+		doc.flags.ignore_mandatory = True
+		doc.save(ignore_permissions=True)
+		# HRMS marks `scheduled_on` as set-only-once, so a normal save rejects a
+		# reschedule. Write the schedule fields directly, after the save.
+		if new_schedule:
+			frappe.db.set_value("Interview", doc.name, new_schedule, update_modified=True)
+		if doc.job_applicant and frappe.db.exists("Job Applicant", doc.job_applicant):
+			frappe.get_doc("Job Applicant", doc.job_applicant).add_comment("Comment", f"Interview {doc.name} updated: " + "; ".join(changes))
+		frappe.db.commit()
+		return success_response({"name": doc.name}, message=f"Interview {doc.name} updated.")
+	except Exception as e:
+		return error_response(f"Error updating interview: {str(e)}", e)
+
+
+@frappe.whitelist()
+def cancel_interview(interview_id):
+	"""Cancels (deletes) a pending interview that has no feedback yet."""
+	try:
+		if not interview_id or not frappe.db.exists("Interview", interview_id):
+			return error_response("Interview not found.")
+		doc = frappe.get_doc("Interview", interview_id)
+		if doc.status != "Pending":
+			return error_response(f"This interview is already {doc.status} and cannot be cancelled.")
+		if _interview_has_feedback(interview_id):
+			return error_response("Feedback has already been submitted for this interview, so it cannot be cancelled.")
+		applicant = doc.job_applicant
+		frappe.delete_doc("Interview", interview_id, ignore_permissions=True, force=True)
+		if applicant and frappe.db.exists("Job Applicant", applicant):
+			frappe.get_doc("Job Applicant", applicant).add_comment("Comment", f"Interview {interview_id} was cancelled.")
+		frappe.db.commit()
+		return success_response({"name": interview_id}, message=f"Interview {interview_id} cancelled.")
+	except Exception as e:
+		return error_response(f"Error cancelling interview: {str(e)}", e)
 
 
 @frappe.whitelist()
@@ -1134,6 +1226,12 @@ def create_job_opening(job_title, company, department=None, vacancies=1, publish
 		if not company:
 			return error_response("Company is required.")
 
+		vac, vac_err = _validate_vacancies(vacancies)
+		if vac_err:
+			return error_response(vac_err)
+		if frappe.db.exists("Job Opening", {"job_title": job_title.strip(), "company": company}):
+			return error_response(f"A job opening titled '{job_title.strip()}' already exists for {company}. Edit the existing one or use a different title.")
+
 		designation = _resolve_designation(job_title.strip())
 		if not designation:
 			return error_response(f"Could not resolve or create a Designation for '{job_title}'.")
@@ -1143,7 +1241,7 @@ def create_job_opening(job_title, company, department=None, vacancies=1, publish
 		opening.designation = designation
 		opening.company = company
 		opening.status = "Open"
-		opening.vacancies = safe_int(vacancies, 1) or 1
+		opening.vacancies = vac
 		opening.publish = 1 if cint(publish) else 0
 		if department:
 			resolved_dept = _resolve_department(department, company)
@@ -1162,6 +1260,64 @@ def create_job_opening(job_title, company, department=None, vacancies=1, publish
 		)
 	except Exception as e:
 		return error_response(f"Error creating job opening: {str(e)}", e)
+
+
+def _validate_vacancies(vacancies):
+	"""Returns (int_value, error_message). Vacancies must be a whole number 1-1000."""
+	if vacancies is None or str(vacancies).strip() == "":
+		return 1, None
+	try:
+		vac = int(str(vacancies).strip())
+	except (ValueError, TypeError):
+		return None, "Vacancies must be a whole number."
+	if vac < 1 or vac > 1000:
+		return None, "Vacancies must be between 1 and 1000."
+	return vac, None
+
+
+@frappe.whitelist()
+def update_job_opening(job_name, job_title=None, department=None, vacancies=None, publish=None, status=None, description=None):
+	"""Edits an existing Job Opening (title, department, vacancies, status, visibility)."""
+	try:
+		if not job_name or not frappe.db.exists("Job Opening", job_name):
+			return error_response("Job Opening not found.")
+		doc = frappe.get_doc("Job Opening", job_name)
+
+		if job_title is not None:
+			title = job_title.strip()
+			if not title:
+				return error_response("Job title is required.")
+			if title != doc.job_title:
+				if frappe.db.exists("Job Opening", {"job_title": title, "company": doc.company, "name": ["!=", doc.name]}):
+					return error_response(f"Another job opening titled '{title}' already exists for {doc.company}.")
+				doc.job_title = title
+		if vacancies is not None:
+			vac, vac_err = _validate_vacancies(vacancies)
+			if vac_err:
+				return error_response(vac_err)
+			doc.vacancies = vac
+		if publish is not None:
+			doc.publish = 1 if cint(publish) else 0
+		if status is not None:
+			if status not in ("Open", "Closed"):
+				return error_response("Status must be Open or Closed.")
+			doc.status = status
+		if department is not None:
+			if department:
+				resolved = _resolve_department(department, doc.company)
+				if resolved:
+					doc.department = resolved
+			else:
+				doc.department = None
+		if description is not None:
+			doc.description = description
+
+		doc.flags.ignore_permissions = True
+		doc.save(ignore_permissions=True)
+		frappe.db.commit()
+		return success_response({"name": doc.name, "job_title": doc.job_title}, message=f"Job Opening '{doc.job_title}' updated!")
+	except Exception as e:
+		return error_response(f"Error updating job opening: {str(e)}", e)
 
 
 @frappe.whitelist()

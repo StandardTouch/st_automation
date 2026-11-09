@@ -105,6 +105,7 @@ export function AppContent() {
   const [openInSchedulingMode, setOpenInSchedulingMode] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isNewJobOpeningOpen, setIsNewJobOpeningOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState(null);
   const [isSelectCandidateOpen, setIsSelectCandidateOpen] = useState(false);
   const [isQuickIncentiveOpen, setIsQuickIncentiveOpen] = useState(false);
   const [isBulkIncentiveOpen, setIsBulkIncentiveOpen] = useState(false);
@@ -390,6 +391,28 @@ export function AppContent() {
     }
   };
 
+  const handleSaveJobOpening = async (formData) => {
+    if (!editingJob) return handleCreateJobOpening(formData);
+    setIsActionLoading(true);
+    try {
+      const res = await recruitmentApi.updateJobOpening(editingJob.name, {
+        job_title: formData.job_title,
+        department: formData.department,
+        vacancies: formData.vacancies,
+        publish: formData.publish ? 1 : 0,
+        status: formData.status,
+      });
+      addToast(res.message || 'Job Opening updated!', 'success');
+      setIsNewJobOpeningOpen(false);
+      setEditingJob(null);
+      loadRecruitment();
+    } catch (err) {
+      addToast(err.message || 'Failed to update job opening', 'error');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   const handleCreateJobOpening = async (formData) => {
     setIsActionLoading(true);
     try {
@@ -603,7 +626,8 @@ export function AppContent() {
               jobOpenings={jobOpenings}
               onTogglePublish={handleToggleJob}
               isLoading={isRecruitmentLoading}
-              onNewJobOpening={() => setIsNewJobOpeningOpen(true)}
+              onNewJobOpening={() => { setEditingJob(null); setIsNewJobOpeningOpen(true); }}
+              onEditJobOpening={(job) => { setEditingJob(job); setIsNewJobOpeningOpen(true); }}
               onDeleteJobOpening={handleDeleteJobOpening}
             />
           )}
@@ -793,10 +817,11 @@ export function AppContent() {
 
       <QuickAddJobOpeningModal
         isOpen={isNewJobOpeningOpen}
-        onClose={() => setIsNewJobOpeningOpen(false)}
-        onAdd={handleCreateJobOpening}
+        onClose={() => { setIsNewJobOpeningOpen(false); setEditingJob(null); }}
+        onAdd={handleSaveJobOpening}
         isSubmitting={isActionLoading}
         departments={departments}
+        job={editingJob}
       />
 
       <FeedbackScorecardModal

@@ -8,6 +8,7 @@ import { SlideOver } from '../../components/common/SlideOver';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatDate, formatDateTime, callApi, uploadFile } from '../../api/client';
+import { recruitmentApi } from '../../api/recruitmentApi';
 import { useToast } from '../../components/common/Toast';
 import EmployeeSelect from '../../components/EmployeeSelect';
 
@@ -49,6 +50,51 @@ export function ApplicantDetailModal({
   }, [applicant?.name]);
 
   const [scheduledInterviews, setScheduledInterviews] = useState([]);
+  // Editing a scheduled interview: { id, time, interviewers } or null
+  const [editingInterview, setEditingInterview] = useState(null);
+  const [isSavingInterview, setIsSavingInterview] = useState(false);
+
+  const toLocalInput = (iso) => (iso ? String(iso).slice(0, 16) : '');
+
+  const startEditInterview = (iv) => {
+    setEditingInterview({
+      id: iv.name,
+      time: toLocalInput(iv.scheduled_on),
+      interviewers: (iv.interviewer_employees || []).filter(Boolean),
+    });
+  };
+
+  const saveInterviewEdit = async () => {
+    if (!editingInterview) return;
+    if (!editingInterview.time) { addToast('Please select a date and time.', 'error'); return; }
+    if (!editingInterview.interviewers.length) { addToast('Please select at least one interviewer.', 'error'); return; }
+    setIsSavingInterview(true);
+    try {
+      const res = await recruitmentApi.updateInterview(editingInterview.id, {
+        scheduled_time: editingInterview.time,
+        interviewers: JSON.stringify(editingInterview.interviewers),
+      });
+      addToast(res.message || 'Interview updated.', 'success');
+      setEditingInterview(null);
+      loadInterviews();
+    } catch (err) {
+      addToast(err.message || 'Failed to update interview', 'error');
+    } finally {
+      setIsSavingInterview(false);
+    }
+  };
+
+  const cancelInterview = async (iv) => {
+    if (!window.confirm(`Cancel interview ${iv.name}? This cannot be undone.`)) return;
+    try {
+      const res = await recruitmentApi.cancelInterview(iv.name);
+      addToast(res.message || 'Interview cancelled.', 'success');
+      setEditingInterview(null);
+      loadInterviews();
+    } catch (err) {
+      addToast(err.message || 'Failed to cancel interview', 'error');
+    }
+  };
   const [isLoadingInterviews, setIsLoadingInterviews] = useState(false);
 
   // Reload every time the drawer opens, not only when the applicant changes:
@@ -222,6 +268,39 @@ export function ApplicantDetailModal({
                       </Badge>
                     </div>
                   </div>
+                  {/* Actions: only while interview is pending and has no feedback */}
+                  {iv.status === 'Pending' && !(iv.feedbacks && iv.feedbacks.length) && (
+                    editingInterview?.id === iv.name ? (
+                      <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+                        <div>
+                          <label className="block text-[13px] font-bold text-gray-700 dark:text-slate-200 mb-1">Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={editingInterview.time}
+                            onChange={(e) => setEditingInterview({ ...editingInterview, time: e.target.value })}
+                            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[13px] font-bold text-gray-700 dark:text-slate-200 mb-1">Interviewers</label>
+                          <EmployeeSelect
+                            multiple
+                            value={editingInterview.interviewers}
+                            onChange={(vals) => setEditingInterview({ ...editingInterview, interviewers: vals })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" onClick={() => setEditingInterview(null)}>Close</Button>
+                          <Button variant="primary" isLoading={isSavingInterview} onClick={saveInterviewEdit}>Save Changes</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-slate-700">
+                        <Button variant="secondary" onClick={() => startEditInterview(iv)}>Reschedule / Edit</Button>
+                        <Button variant="danger" onClick={() => cancelInterview(iv)}>Cancel Interview</Button>
+                      </div>
+                    )
+                  )}
                   {/* Feedbacks Section */}
                   {iv.feedbacks && iv.feedbacks.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700 space-y-2">
