@@ -44,6 +44,8 @@ import { BulkIncentiveModal } from './modules/payroll/BulkIncentiveModal';
 import { LoanApplicationWizard } from './modules/payroll/LoanApplicationWizard';
 import { ActiveLoansView } from './modules/payroll/ActiveLoansView';
 import { SalarySlipsView } from './modules/payroll/SalarySlipsView';
+import { SalaryStructureView } from './modules/payroll/SalaryStructureView';
+import { CommandPalette } from './components/layout/CommandPalette';
 
 // Diagnostics & Public Candidate
 import { DiagnosticsView } from './modules/diagnostics/DiagnosticsView';
@@ -414,30 +416,23 @@ export function AppContent() {
   };
 
   const handleSaveJobOpening = async (formData) => {
-    if (!editingJob) return handleCreateJobOpening(formData);
     setIsActionLoading(true);
     try {
-      const res = await recruitmentApi.updateJobOpening(editingJob.name, {
-        job_title: formData.job_title,
-        department: formData.department,
-        vacancies: formData.vacancies,
-        publish: formData.publish ? 1 : 0,
-        status: formData.status,
-      });
-      addToast(res.message || 'Job Opening updated!', 'success');
-      setIsNewJobOpeningOpen(false);
-      setEditingJob(null);
-      loadRecruitment();
-    } catch (err) {
-      addToast(err.message || 'Failed to update job opening', 'error');
-    } finally {
-      setIsActionLoading(false);
-    }
-  };
-
-  const handleCreateJobOpening = async (formData) => {
-    setIsActionLoading(true);
-    try {
+      if (editingJob) {
+        const upd = await recruitmentApi.updateJobOpening(editingJob.name, {
+          job_title: formData.job_title,
+          department: formData.department,
+          vacancies: formData.vacancies,
+          status: formData.status,
+          publish: formData.publish ? 1 : 0,
+          description: formData.description,
+        });
+        addToast(upd.message || 'Job Opening updated!', 'success');
+        setIsNewJobOpeningOpen(false);
+        setEditingJob(null);
+        loadRecruitment();
+        return;
+      }
       const res = await recruitmentApi.createJobOpening(
         formData.job_title,
         selectedCompany,
@@ -449,7 +444,7 @@ export function AppContent() {
       setIsNewJobOpeningOpen(false);
       loadRecruitment();
     } catch (err) {
-      addToast(err.message || 'Failed to create job opening', 'error');
+      addToast(err.message || 'Failed to save job opening', 'error');
     } finally {
       setIsActionLoading(false);
     }
@@ -620,6 +615,19 @@ export function AppContent() {
           onQuickAddIncentive={() => setIsQuickIncentiveOpen(true)}
         />
 
+        <CommandPalette
+          userProfile={userProfile}
+          onNavigate={(tab) => { setActiveTab(tab); setIsMobileOpen(false); }}
+          actions={[
+            ...((userProfile?.is_recruiter || userProfile?.is_hr_admin || userProfile?.is_system_manager)
+              ? [{ label: 'Add Candidate', run: () => setIsQuickAddOpen(true) }] : []),
+            ...((userProfile?.is_hr_admin || userProfile?.is_system_manager) ? [
+              { label: 'Quick Incentive', run: () => setIsQuickIncentiveOpen(true) },
+              { label: 'New Loan Application', run: () => setIsLoanWizardOpen(true) },
+            ] : []),
+          ]}
+        />
+
         {/* View Canvas */}
         <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto animate-fade-in">
           <h1 className="sr-only">Standard Touch HR Operations</h1>
@@ -770,6 +778,13 @@ export function AppContent() {
             />
           )}
 
+          {activeTab === 'salary-structures' && (
+            <SalaryStructureView
+              company={selectedCompany}
+              onChanged={loadPayroll}
+            />
+          )}
+
           {activeTab === 'salary-slips' && (
             <SalarySlipsView
               slips={salarySlips}
@@ -847,10 +862,10 @@ export function AppContent() {
       <QuickAddJobOpeningModal
         isOpen={isNewJobOpeningOpen}
         onClose={() => { setIsNewJobOpeningOpen(false); setEditingJob(null); }}
+        job={editingJob}
         onAdd={handleSaveJobOpening}
         isSubmitting={isActionLoading}
         departments={departments}
-        job={editingJob}
       />
 
       <FeedbackScorecardModal

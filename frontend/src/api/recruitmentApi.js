@@ -61,7 +61,7 @@ export const recruitmentApi = {
     }),
   
   updateJobOpening: (jobName, fields) =>
-    callApi('st_automation.api.recruitment.update_job_opening', { job_name: jobName, ...fields }),
+    callApi('st_automation.api.recruitment.update_job_opening', { job_name: jobName, job_opening_id: jobName, ...fields }),
 
   updateInterview: (interviewId, fields) =>
     callApi('st_automation.api.recruitment.update_interview', { interview_id: interviewId, ...fields }),

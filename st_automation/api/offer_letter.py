@@ -157,6 +157,28 @@ def get_offer_letters(company=None):
 	If current user is an Employee, returns only their own offer letter.
 	"""
 	try:
+		# Auto-heal schema if custom fields are missing on this site
+		meta = frappe.get_meta("Job Offer")
+		if not meta.has_field("responsibilities_text") or not meta.has_field("training_duration"):
+			try:
+				from st_automation.setup import setup_custom_fields
+				setup_custom_fields()
+				frappe.clear_cache(doctype="Job Offer")
+				meta = frappe.get_meta("Job Offer")
+			except Exception:
+				pass
+
+		base_fields = [
+			"name", "job_applicant", "applicant_name", "applicant_email",
+			"status", "offer_date", "designation", "company", "creation"
+		]
+		extra_fields = [
+			"training_duration", "training_stipend", "salary_range",
+			"contract_duration", "reporting_manager", "hr_signatory_name",
+			"employee"
+		]
+		fetch_fields = base_fields + [f for f in extra_fields if meta.has_field(f)]
+
 		user = frappe.session.user
 		roles = set(frappe.get_roles(user))
 		is_hr = (user == "Administrator" or bool(roles & {"System Manager", "HR Manager", "HR User", "Payroll Manager"}))
@@ -173,9 +195,9 @@ def get_offer_letters(company=None):
 			
 			candidate_emails = [e for e in [emp.personal_email, emp.company_email] if e]
 			or_filters = []
-			if emp.name:
+			if emp.name and meta.has_field("employee"):
 				or_filters.append(["employee", "=", emp.name])
-			if candidate_emails:
+			if candidate_emails and meta.has_field("applicant_email"):
 				or_filters.append(["applicant_email", "in", candidate_emails])
 			
 			if not or_filters:
@@ -185,13 +207,7 @@ def get_offer_letters(company=None):
 				"Job Offer",
 				filters=filters,
 				or_filters=or_filters,
-				fields=[
-					"name", "job_applicant", "applicant_name", "applicant_email",
-					"status", "offer_date", "designation", "company",
-					"training_duration", "training_stipend", "salary_range",
-					"contract_duration", "reporting_manager", "hr_signatory_name",
-					"employee", "creation"
-				],
+				fields=fetch_fields,
 				order_by="creation desc"
 			)
 			return success_response({"offers": offers, "is_hr": False})
@@ -200,13 +216,7 @@ def get_offer_letters(company=None):
 		offers = frappe.get_all(
 			"Job Offer",
 			filters=filters,
-			fields=[
-				"name", "job_applicant", "applicant_name", "applicant_email",
-				"status", "offer_date", "designation", "company",
-				"training_duration", "training_stipend", "salary_range",
-				"contract_duration", "reporting_manager", "hr_signatory_name",
-				"employee", "creation"
-			],
+			fields=fetch_fields,
 			order_by="creation desc"
 		)
 		return success_response({"offers": offers, "is_hr": True})
@@ -229,7 +239,11 @@ def get_offer_letter_detail(offer_name):
 
 		if not is_hr:
 			emp = frappe.db.get_value("Employee", {"user_id": user}, ["name", "personal_email", "company_email"], as_dict=True)
-			if not emp or (doc.employee != emp.name and doc.applicant_email not in [emp.personal_email, emp.company_email]):
+			emp_name = emp.name if emp else None
+			emp_emails = [emp.personal_email, emp.company_email] if emp else []
+			doc_emp = getattr(doc, "employee", None)
+			doc_email = getattr(doc, "applicant_email", None)
+			if not emp or (doc_emp != emp_name and doc_email not in emp_emails):
 				frappe.throw("You do not have permission to view this Offer Letter.", frappe.PermissionError)
 
 		html = render_standardtouch_offer_letter_html(doc)
@@ -311,19 +325,29 @@ def create_or_update_offer_letter(
 		offer.designation = _resolve_designation(designation)
 		offer.company = _get_default_company()
 
+		# Auto-heal schema if custom fields are missing on this site
+		meta = frappe.get_meta("Job Offer")
+		if not meta.has_field("responsibilities_text") or not meta.has_field("training_duration"):
+			try:
+				from st_automation.setup import setup_custom_fields
+				setup_custom_fields()
+				frappe.clear_cache(doctype="Job Offer")
+			except Exception:
+				pass
+
 		offer.training_duration = training_duration or "6 months"
 		offer.training_stipend = training_stipend or "INR 5,000/month"
 		offer.salary_range = salary_range or "INR 10,000 - 15,000/month"
 		offer.contract_duration = contract_duration or "24 Months + 6 months of Training"
-		offer.reporting_manager = reporting_manager or "Mr. Abdul Nasir Mauzam Ali"
-		offer.hr_signatory_name = hr_signatory_name or "Muzammil Siddiqui"
+		offer.reporting_manager = reporting_manager or ""
+		offer.hr_signatory_name = hr_signatory_name or ""
 
 		if responsibilities:
 			if isinstance(responsibilities, list):
 				offer.responsibilities_text = "\n".join(responsibilities)
 			else:
 				offer.responsibilities_text = str(responsibilities)
-		elif not offer.responsibilities_text:
+		elif not getattr(offer, "responsibilities_text", None):
 			offer.responsibilities_text = "\n".join(DEFAULT_RESPONSIBILITIES)
 
 		# If employee already exists with this email, link it
@@ -447,9 +471,169 @@ def update_offer_status(offer_name, status):
 		return error_response(f"Error updating offer status: {str(e)}", e)
 
 
+@frappe.whitelist()
+def get_offer_form_metadata(company=None):
+	"""Returns options for Offer Letter Generator form (Designations, Managers, Candidates, Durations)."""
+	try:
+		preset_titles = list(RESPONSIBILITY_PRESETS.keys())
+		erpn_desigs = frappe.get_all("Designation", fields=["name", "designation_name"], order_by="name asc")
+		desig_names = []
+		for p in preset_titles:
+			if p not in desig_names:
+				desig_names.append(p)
+		for d in erpn_desigs:
+			name = d.designation_name or d.name
+			if name and not name.startswith("__") and not name.startswith("HR-OPN-") and name not in desig_names:
+				desig_names.append(name)
+
+		mgr_filters = {"status": "Active"}
+		if company:
+			mgr_filters["company"] = company
+		employees = frappe.get_all(
+			"Employee",
+			filters=mgr_filters,
+			fields=["name", "employee_name", "designation"],
+			order_by="employee_name asc",
+			limit=100
+		)
+
+		candidates = frappe.get_all(
+			"Job Applicant",
+			filters={"status": ["in", ["Accepted", "Selected", "Replied", "Open"]]},
+			fields=["name", "applicant_name", "email_id", "job_title", "status"],
+			order_by="creation desc",
+			limit=50
+		)
+
+		training_durations = [
+			"6 months",
+			"3 months",
+			"1 month",
+			"12 months",
+			"Direct Full-time (No Training)"
+		]
+
+		contract_durations = [
+			"24 Months + 6 months of Training",
+			"12 Months + 3 months of Training",
+			"24 Months",
+			"12 Months",
+			"Permanent Employment"
+		]
+
+		return success_response({
+			"designations": desig_names,
+			"managers": employees,
+			"candidates": candidates,
+			"training_durations": training_durations,
+			"contract_durations": contract_durations,
+			"presets": RESPONSIBILITY_PRESETS
+		})
+	except Exception as e:
+		return error_response(f"Error loading form metadata: {str(e)}", e)
+
+
+@frappe.whitelist()
+def onboard_from_offer(offer_name):
+	"""Converts an accepted Job Offer into an Employee record in ERPNext and links the offer."""
+	user = frappe.session.user
+	roles = set(frappe.get_roles(user))
+	if user != "Administrator" and not (roles & {"System Manager", "HR Manager", "HR User", "Payroll Manager"}):
+		frappe.throw("Permission denied: Only HR can onboard employees.", frappe.PermissionError)
+
+	try:
+		if not frappe.db.exists("Job Offer", offer_name):
+			return error_response(f"Job Offer {offer_name} not found.")
+
+		offer = frappe.get_doc("Job Offer", offer_name)
+
+		# Check if already linked to employee
+		existing_emp_id = getattr(offer, "employee", None)
+		if existing_emp_id and frappe.db.exists("Employee", existing_emp_id):
+			return success_response({
+				"employee": existing_emp_id,
+				"already_existed": True
+			}, message=f"Candidate is already linked to Employee {existing_emp_id}.")
+
+		email = getattr(offer, "applicant_email", None)
+		candidate_name = getattr(offer, "applicant_name", None) or getattr(offer, "candidate_name", None) or "Employee"
+
+		# Check if employee already exists with this personal_email or company_email
+		existing = None
+		if email:
+			existing = frappe.db.get_value("Employee", {"personal_email": email}, "name")
+			if not existing:
+				existing = frappe.db.get_value("Employee", {"company_email": email}, "name")
+
+		if existing:
+			offer.employee = existing
+			offer.status = "Accepted"
+			offer.save(ignore_permissions=True)
+			frappe.db.commit()
+			return success_response({
+				"employee": existing,
+				"already_existed": True
+			}, message=f"Linked to existing ERPNext Employee {existing}!")
+
+		# Create new Employee in ERPNext
+		emp = frappe.new_doc("Employee")
+		parts = candidate_name.strip().split(" ", 1)
+		emp.first_name = parts[0]
+		if len(parts) > 1:
+			emp.last_name = parts[1]
+		emp.employee_name = candidate_name
+		if email:
+			emp.personal_email = email
+		emp.status = "Active"
+		emp.date_of_joining = offer.offer_date or nowdate()
+
+		desig = getattr(offer, "designation", None)
+		if desig:
+			emp.designation = _resolve_designation(desig)
+
+		emp.company = offer.company or _get_default_company()
+
+		if getattr(offer, "job_applicant", None):
+			emp.job_applicant = offer.job_applicant
+
+		rep_mgr = getattr(offer, "reporting_manager", None)
+		if rep_mgr:
+			mgr_emp = frappe.db.get_value("Employee", {"employee_name": rep_mgr, "status": "Active"}, "name")
+			if mgr_emp:
+				emp.reports_to = mgr_emp
+
+		emp.flags.ignore_mandatory = True
+		frappe.flags.ignore_permissions = True
+		try:
+			emp.insert(ignore_permissions=True)
+			frappe.db.commit()
+		finally:
+			frappe.flags.ignore_permissions = False
+
+		# Link employee back to offer
+		offer.employee = emp.name
+		offer.status = "Accepted"
+		offer.save(ignore_permissions=True)
+
+		# Also update Job Applicant status if linked
+		if getattr(offer, "job_applicant", None) and frappe.db.exists("Job Applicant", offer.job_applicant):
+			frappe.db.set_value("Job Applicant", offer.job_applicant, "status", "Accepted")
+
+		frappe.db.commit()
+
+		return success_response({
+			"employee": emp.name,
+			"offer_name": offer.name
+		}, message=f"Successfully onboarded {candidate_name} as Employee {emp.name} in ERPNext!")
+
+	except Exception as e:
+		return error_response(f"Error onboarding candidate: {str(e)}", e)
+
+
 def render_standardtouch_offer_letter_html(offer):
 	"""Renders the exact 5-page StandardTouch Offer Letter as clean HTML/CSS for printing and PDF generation."""
-	date_str = formatdate(offer.offer_date, "dd/MM/yyyy") if offer.offer_date else nowdate()
+	offer_date = getattr(offer, "offer_date", None)
+	date_str = formatdate(offer_date, "dd/MM/yyyy") if offer_date else nowdate()
 
 	# Never print the literal word "None" for terms that were left blank
 	# (e.g. offers drafted automatically from the hiring decision). Fill the
@@ -465,20 +649,29 @@ def render_standardtouch_offer_letter_html(offer):
 	):
 		if not offer.get(_field):
 			offer.set(_field, _default)
-
 	# Responsibilities
-	resp_lines = [r.strip() for r in (offer.responsibilities_text or "").split("\n") if r.strip()]
+	resp_raw = getattr(offer, "responsibilities_text", None) or ""
+	resp_lines = [r.strip() for r in resp_raw.split("\n") if r.strip()]
 	if not resp_lines:
 		resp_lines = DEFAULT_RESPONSIBILITIES
 
 	resp_items = "".join([f"<li style='margin-bottom: 8px;'>{r}</li>" for r in resp_lines])
+
+	salary_range = getattr(offer, "salary_range", None) or "INR 10,000 - 15,000/month"
+	training_duration = getattr(offer, "training_duration", None) or "6 months"
+	training_stipend = getattr(offer, "training_stipend", None) or "INR 5,000/month"
+	contract_duration = getattr(offer, "contract_duration", None) or "24 Months + 6 months of Training"
+	reporting_manager = getattr(offer, "reporting_manager", None) or "Reporting Manager"
+	hr_signatory_name = getattr(offer, "hr_signatory_name", None) or "HR Operations Team"
+	applicant_name = getattr(offer, "applicant_name", None) or getattr(offer, "candidate_name", None) or "Candidate"
+	designation = getattr(offer, "designation", None) or "Team Member"
 
 	html = f"""
 	<!DOCTYPE html>
 	<html>
 	<head>
 		<meta charset="utf-8">
-		<title>Offer Letter - {offer.applicant_name}</title>
+		<title>Offer Letter - {applicant_name}</title>
 		<style>
 			@page {{
 				size: A4 portrait;
@@ -628,12 +821,12 @@ def render_standardtouch_offer_letter_html(offer):
 				<div class="doc-title">OFFER LETTER</div>
 
 				<p style="margin: 6px 0;"><strong>Date:</strong> {date_str}</p>
-				<p style="margin: 6px 0; font-size: 15px;"><strong>Employment Proposal for:</strong> {offer.applicant_name}</p>
-				<p style="margin: 6px 0; font-size: 15px;"><strong>Position:</strong> {offer.designation or 'Team Member'}</p>
+				<p style="margin: 6px 0; font-size: 15px;"><strong>Employment Proposal for:</strong> {applicant_name}</p>
+				<p style="margin: 6px 0; font-size: 15px;"><strong>Position:</strong> {designation}</p>
 
 				<div style="background-color: #f9fafb; border-left: 4px solid #ef4444; padding: 12px; margin: 20px 0;">
 					<p style="margin: 0; font-size: 16px; font-weight: bold; text-decoration: underline;">
-						Salary - {offer.salary_range} (After {offer.training_duration} of training)
+						Salary - {salary_range} (After {training_duration} of training)
 					</p>
 					<p style="margin: 4px 0 0; font-size: 13px; color: #4b5563;">Salary Variable (Depending on performance)</p>
 				</div>
@@ -649,12 +842,12 @@ def render_standardtouch_offer_letter_html(offer):
 					<tr>
 						<td class="bullet-td">▪</td>
 						<td class="label-td">Travel allowance during Training</td>
-						<td class="val-td">{offer.training_stipend}</td>
+						<td class="val-td">{training_stipend}</td>
 					</tr>
 					<tr>
 						<td class="bullet-td">▪</td>
 						<td class="label-td">Training Duration</td>
-						<td class="val-td">{offer.training_duration}</td>
+						<td class="val-td">{training_duration}</td>
 					</tr>
 					<tr>
 						<td class="bullet-td">▪</td>
@@ -664,7 +857,7 @@ def render_standardtouch_offer_letter_html(offer):
 					<tr>
 						<td class="bullet-td">▪</td>
 						<td class="label-td">Contract</td>
-						<td class="val-td">{offer.contract_duration}</td>
+						<td class="val-td">{contract_duration}</td>
 					</tr>
 					<tr>
 						<td class="bullet-td">▪</td>
@@ -702,7 +895,7 @@ def render_standardtouch_offer_letter_html(offer):
 
 				<div style="margin-top: 40px; padding: 16px; background-color: #f3f4f6; border-radius: 6px;">
 					<p style="margin: 0; font-size: 15px; font-weight: bold;">
-						Reporting to: <span style="color: #ef4444;">{offer.reporting_manager}</span>
+						Reporting to: <span style="color: #ef4444;">{reporting_manager}</span>
 					</p>
 				</div>
 			</div>
@@ -840,13 +1033,13 @@ def render_standardtouch_offer_letter_html(offer):
 				<div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 20px;">
 					<div style="text-align: left;">
 						<div style="height: 40px; border-bottom: 1px solid #111827; width: 180px; margin-bottom: 8px;"></div>
-						<p style="margin: 0; font-weight: bold; font-size: 15px;">{offer.hr_signatory_name}</p>
+						<p style="margin: 0; font-weight: bold; font-size: 15px;">{hr_signatory_name}</p>
 						<p style="margin: 2px 0 0; color: #4b5563; font-size: 13px;">Human Resource Manager</p>
 					</div>
 
 					<div style="text-align: right;">
 						<div style="height: 40px; border-bottom: 1px solid #111827; width: 180px; margin-bottom: 8px; margin-left: auto;"></div>
-						<p style="margin: 0; font-weight: bold; font-size: 15px;">{offer.applicant_name}</p>
+						<p style="margin: 0; font-weight: bold; font-size: 15px;">{applicant_name}</p>
 						<p style="margin: 2px 0 0; color: #4b5563; font-size: 13px;">Read & Signed</p>
 					</div>
 				</div>

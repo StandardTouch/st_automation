@@ -57,7 +57,11 @@ export function JobOpeningsView({ jobOpenings = [], onTogglePublish, isLoading, 
                 <div className="text-sm text-brand-grey space-y-1">
                   {job.department && <p>Department: <span className="text-gray-800 dark:text-slate-100">{job.department}</span></p>}
                   {job.designation && <p>Designation: <span className="text-gray-800 dark:text-slate-100">{job.designation}</span></p>}
-                  {job.status && <p>Status: <span className="text-gray-800 dark:text-slate-100">{job.status}</span></p>}
+                  {job.status === 'Closed' ? (
+                    <p><Badge variant="warning">Closed</Badge></p>
+                  ) : job.status ? (
+                    <p>Status: <span className="text-gray-800 dark:text-slate-100">{job.status}</span></p>
+                  ) : null}
                   {job.vacancies > 0 && <p>Vacancies: <span className="text-gray-800 dark:text-slate-100">{job.vacancies}</span></p>}
                 </div>
               </div>

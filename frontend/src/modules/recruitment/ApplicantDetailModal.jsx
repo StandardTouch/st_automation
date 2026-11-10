@@ -12,6 +12,7 @@ import { formatRatingSummary } from './KanbanBoard';
 import { recruitmentApi } from '../../api/recruitmentApi';
 import { useToast } from '../../components/common/Toast';
 import EmployeeSelect from '../../components/EmployeeSelect';
+import { DateInput } from '../../components/common/DateInput';
 
 export function ApplicantDetailModal({
   isOpen,
@@ -360,7 +361,7 @@ export function ApplicantDetailModal({
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1.5">Scheduled Date & Time *</label>
-                    <input
+                    <DateInput
                       type="datetime-local"
                       value={interviewTime}
                       onChange={(e) => setInterviewTime(e.target.value)}
