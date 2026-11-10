@@ -6,6 +6,7 @@ export default function EmployeeSelect({ value, onChange, className, multiple = 
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function EmployeeSelect({ value, onChange, className, multiple = 
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        setQuery('');
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -126,7 +128,21 @@ export default function EmployeeSelect({ value, onChange, className, multiple = 
 
       {isOpen && (
         <div className="absolute z-[100] mt-1 w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-fade-in py-1">
-          {employees.map(emp => {
+          <div className="px-3 pb-2 pt-1 sticky top-0 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700">
+            <input
+              autoFocus
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setIsOpen(false); setQuery(''); } }}
+              placeholder="Type to search by name or ID..."
+              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+            />
+          </div>
+          {employees.filter((emp) => {
+            const q = query.trim().toLowerCase();
+            return !q || (emp.employee_name || '').toLowerCase().includes(q) || (emp.name || '').toLowerCase().includes(q);
+          }).map(emp => {
             const isSelected = currentValues.includes(emp.name);
             return (
               <div 
@@ -150,6 +166,9 @@ export default function EmployeeSelect({ value, onChange, className, multiple = 
           })}
           {employees.length === 0 && !loading && (
             <div className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400 text-center">No active employees found</div>
+          )}
+          {employees.length > 0 && query.trim() && !employees.some((emp) => (emp.employee_name || '').toLowerCase().includes(query.trim().toLowerCase()) || (emp.name || '').toLowerCase().includes(query.trim().toLowerCase())) && (
+            <div className="px-4 py-3 text-sm text-gray-500 dark:text-slate-400 text-center">No match for "{query}"</div>
           )}
         </div>
       )}

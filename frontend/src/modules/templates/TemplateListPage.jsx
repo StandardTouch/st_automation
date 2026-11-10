@@ -3,9 +3,10 @@ import { templateApi } from '../../api/templateApi';
 import { useToast } from '../../components/common/Toast';
 import { Plus, Search, Edit2, Trash2, Building2, Briefcase, Users, LayoutTemplate } from 'lucide-react';
 
-export function TemplateListPage({ onEdit, onCreate }) {
+export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) {
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState('Onboarding');
+  const [activeTab, setActiveTabState] = useState(initialTab || 'Onboarding');
+  const setActiveTab = (tab) => { setActiveTabState(tab); onTabChange && onTabChange(tab); };
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

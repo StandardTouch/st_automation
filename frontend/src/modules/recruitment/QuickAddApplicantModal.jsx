@@ -1,21 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserPlus, Upload, CheckCircle2 } from 'lucide-react';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
 
 export function QuickAddApplicantModal({ isOpen, onClose, onAdd, jobOpenings = [], isSubmitting }) {
-  const [formData, setFormData] = useState({
+  const EMPTY_FORM = {
     applicant_name: '',
     email_id: '',
     phone_number: '',
     job_title: '',
     notes: '',
     resume_attachment: '',
-  });
+  };
+  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [fileError, setFileError] = useState('');
+
+  // Reset every time the modal opens: it used to keep the previous
+  // candidate's phone number and job opening pre-filled.
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(EMPTY_FORM);
+      setFileError('');
+    }
+  }, [isOpen]);
+
+  // Hidden (unpublished) and closed openings must not be offered as targets.
+  const selectableJobs = jobOpenings.filter((job) => job.publish && job.status !== 'Closed');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.applicant_name || !formData.email_id) return;
+    if (!formData.applicant_name || !formData.email_id || !formData.job_title) return;
     onAdd(formData);
   };
 
@@ -65,14 +79,15 @@ export function QuickAddApplicantModal({ isOpen, onClose, onAdd, jobOpenings = [
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1.5">Target Job Opening</label>
+          <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1.5">Target Job Opening *</label>
           <select
+            required
             value={formData.job_title}
             onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
             className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
           >
-            <option value="">Select Job Opening (Optional)</option>
-            {jobOpenings.map(job => (
+            <option value="">{selectableJobs.length ? 'Select Job Opening' : 'No open job openings - create or publish one first'}</option>
+            {selectableJobs.map(job => (
               <option key={job.name} value={job.name}>
                 {job.job_title || job.name}
               </option>
@@ -90,13 +105,28 @@ export function QuickAddApplicantModal({ isOpen, onClose, onAdd, jobOpenings = [
               type="file"
               accept=".pdf,.doc,.docx"
               onChange={(e) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  setFormData({ ...formData, resume_file: e.target.files[0] });
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const okExt = /\.(pdf|doc|docx)$/i.test(file.name);
+                if (!okExt) {
+                  setFileError('Only PDF, DOC or DOCX files are allowed.');
+                  e.target.value = '';
+                  return;
                 }
+                if (file.size > 5 * 1024 * 1024) {
+                  setFileError('Resume must be 5MB or smaller.');
+                  e.target.value = '';
+                  return;
+                }
+                setFileError('');
+                setFormData({ ...formData, resume_file: file });
               }}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
           </div>
+          {fileError && (
+            <p className="mt-2 text-sm text-red-600 font-medium">{fileError}</p>
+          )}
           {formData.resume_file && (
             <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium flex items-center">
               <CheckCircle2 className="h-4 w-4 mr-1" />

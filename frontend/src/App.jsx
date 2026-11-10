@@ -9,6 +9,7 @@ import { recruitmentApi } from './api/recruitmentApi';
 import { payrollApi } from './api/payrollApi';
 import { onboardingApi } from './api/onboardingApi';
 import { exitApi } from './api/exitApi';
+import { uploadFile } from './api/client';
 
 // Onboarding & Exit Views
 import { OnboardingPipelineView } from './modules/onboarding/OnboardingPipelineView';
@@ -106,7 +107,7 @@ export function AppContent() {
   const [openInSchedulingMode, setOpenInSchedulingMode] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isNewJobOpeningOpen, setIsNewJobOpeningOpen] = useState(false);
-  const [editingJobOpening, setEditingJobOpening] = useState(null);
+  const [editingJob, setEditingJob] = useState(null);
   const [isSelectCandidateOpen, setIsSelectCandidateOpen] = useState(false);
   const [isQuickIncentiveOpen, setIsQuickIncentiveOpen] = useState(false);
   const [isBulkIncentiveOpen, setIsBulkIncentiveOpen] = useState(false);
@@ -117,7 +118,25 @@ export function AppContent() {
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   // Template State
-  const [editingTemplate, setEditingTemplate] = useState({ type: null, name: null });
+  // Template editor state lives in the URL hash so a refresh stays on the same
+  // list tab or the same form: #/templates/<onboarding|separation>[/new|/edit/<name>]
+  const parseTemplateHash = () => {
+    const parts = window.location.hash.replace(/^#\/?/, '').split('/');
+    if (parts[0] !== 'templates') return { type: null, name: null, listTab: 'Onboarding' };
+    const type = parts[1] === 'separation' ? 'Separation' : parts[1] === 'onboarding' ? 'Onboarding' : null;
+    if (type && parts[2] === 'new') return { type, name: null, listTab: type };
+    if (type && parts[2] === 'edit' && parts[3]) return { type, name: decodeURIComponent(parts.slice(3).join('/')), listTab: type };
+    return { type: null, name: null, listTab: type || 'Onboarding' };
+  };
+  const [editingTemplate, setEditingTemplateState] = useState(() => {
+    const t = parseTemplateHash();
+    return { type: t.type, name: t.name };
+  });
+  const [templateListTab, setTemplateListTab] = useState(() => parseTemplateHash().listTab);
+  const openTemplateRoute = (hash, state) => {
+    window.history.pushState(null, '', hash);
+    setEditingTemplateState(state);
+  };
 
   // Offer Letters State
   const [offerLetters, setOfferLetters] = useState([]);
@@ -279,11 +298,52 @@ export function AppContent() {
     }
   }, [selectedCompany]);
 
+  // Keep the active tab in the URL hash and browser history so the back
+  // button / swipe-back moves between HR Ops pages instead of leaving the app
+  // (previously it dropped the user onto the Frappe desk).
+  const VALID_TABS = [
+    'recruitment-pipeline', 'job-openings', 'my-interviews', 'offer-letters',
+    'onboarding-pipeline', 'exit-pipeline', 'payroll-command', 'run-payroll',
+    'loans', 'salary-slips', 'staff-feedback', 'my-feedback', 'feedback-analytics',
+    'templates', 'diagnostics',
+  ];
+  const hashTab = () => {
+    const h = window.location.hash.replace(/^#\/?/, '').split('/')[0];
+    return VALID_TABS.includes(h) ? h : null;
+  };
+  useEffect(() => {
+    const fromHash = hashTab();
+    if (fromHash) setActiveTab((prev) => prev || fromHash);
+    const onPop = () => {
+      const t = hashTab();
+      if (t) setActiveTab(t);
+      const tpl = parseTemplateHash();
+      setEditingTemplateState({ type: tpl.type, name: tpl.name });
+      setTemplateListTab(tpl.listTab);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  useEffect(() => {
+    if (!activeTab || !VALID_TABS.includes(activeTab)) return;
+    if (isPublicCandidateMode || isInterviewFeedbackMode || isPublicOnboardingMode || isPublicExitMode || isPublicCareersMode) return;
+    const current = hashTab();
+    if (current === activeTab) return;
+    // First tab selection (no hash yet) replaces the entry so back does not
+    // land on a blank duplicate of the same page.
+    if (!current) window.history.replaceState(null, '', `#/${activeTab}`);
+    else window.history.pushState(null, '', `#/${activeTab}`);
+    if (activeTab === 'templates') setEditingTemplateState({ type: null, name: null });
+  }, [activeTab, isPublicCandidateMode, isInterviewFeedbackMode, isPublicOnboardingMode, isPublicExitMode, isPublicCareersMode]);
+
   useEffect(() => {
     if (!isPublicCandidateMode && !isPublicOnboardingMode && !isPublicExitMode) {
-      if (activeTab === 'recruitment') loadRecruitment();
-      if (activeTab === 'payroll') loadPayroll();
-      if (activeTab === 'system') loadDiagnostics();
+      // Tab ids are 'recruitment-pipeline' etc.; the old checks compared
+      // against names that never matched, so these views kept showing data
+      // fetched at page load (stale cache) until a full refresh.
+      if (['recruitment-pipeline', 'job-openings', 'my-interviews'].includes(activeTab)) loadRecruitment();
+      if (['payroll-command', 'run-payroll', 'loans', 'salary-slips'].includes(activeTab)) loadPayroll();
+      if (activeTab === 'diagnostics') loadDiagnostics();
       if (activeTab === 'onboarding-pipeline') loadOnboarding();
       if (activeTab === 'exit-pipeline') loadExit();
       if (activeTab === 'offer-letters') loadOfferLetters();
@@ -336,7 +396,15 @@ export function AppContent() {
   const handleQuickAddApplicant = async (formData) => {
     setIsActionLoading(true);
     try {
-      const res = await recruitmentApi.quickAddApplicant(formData);
+      // The resume File used to be kept in form state and silently dropped:
+      // only `resume_attachment` (a URL) reaches the API, so the candidate
+      // was created with "No resume attached". Upload first, then pass the URL.
+      const { resume_file, ...payload } = formData;
+      if (resume_file) {
+        const uploaded = await uploadFile(resume_file, { isPrivate: true });
+        payload.resume_attachment = uploaded.file_url;
+      }
+      const res = await recruitmentApi.quickAddApplicant(payload);
       addToast(res.message || 'Candidate added to pipeline!', 'success');
       setIsQuickAddOpen(false);
       loadRecruitment();
@@ -347,11 +415,11 @@ export function AppContent() {
     }
   };
 
-  const handleCreateJobOpening = async (formData) => {
+  const handleSaveJobOpening = async (formData) => {
     setIsActionLoading(true);
     try {
-      if (editingJobOpening) {
-        const upd = await recruitmentApi.updateJobOpening(editingJobOpening.name, {
+      if (editingJob) {
+        const upd = await recruitmentApi.updateJobOpening(editingJob.name, {
           job_title: formData.job_title,
           department: formData.department,
           vacancies: formData.vacancies,
@@ -361,7 +429,7 @@ export function AppContent() {
         });
         addToast(upd.message || 'Job Opening updated!', 'success');
         setIsNewJobOpeningOpen(false);
-        setEditingJobOpening(null);
+        setEditingJob(null);
         loadRecruitment();
         return;
       }
@@ -376,7 +444,7 @@ export function AppContent() {
       setIsNewJobOpeningOpen(false);
       loadRecruitment();
     } catch (err) {
-      addToast(err.message || 'Failed to create job opening', 'error');
+      addToast(err.message || 'Failed to save job opening', 'error');
     } finally {
       setIsActionLoading(false);
     }
@@ -562,6 +630,7 @@ export function AppContent() {
 
         {/* View Canvas */}
         <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto animate-fade-in">
+          <h1 className="sr-only">Standard Touch HR Operations</h1>
           {/* Recruitment Views */}
           {activeTab === 'recruitment-pipeline' && (
             <KanbanBoard
@@ -588,9 +657,9 @@ export function AppContent() {
               jobOpenings={jobOpenings}
               onTogglePublish={handleToggleJob}
               isLoading={isRecruitmentLoading}
-              onNewJobOpening={() => setIsNewJobOpeningOpen(true)}
+              onNewJobOpening={() => { setEditingJob(null); setIsNewJobOpeningOpen(true); }}
+              onEditJobOpening={(job) => { setEditingJob(job); setIsNewJobOpeningOpen(true); }}
               onDeleteJobOpening={handleDeleteJobOpening}
-              onEditJobOpening={(job) => { setEditingJobOpening(job); setIsNewJobOpeningOpen(true); }}
             />
           )}
 
@@ -652,14 +721,20 @@ export function AppContent() {
           {activeTab === 'templates' && (
             editingTemplate.type ? (
               <TemplateFormPage
+                key={`${editingTemplate.type}:${editingTemplate.name || 'new'}`}
                 templateType={editingTemplate.type}
                 templateName={editingTemplate.name}
-                onBack={() => setEditingTemplate({ type: null, name: null })}
+                onBack={() => openTemplateRoute(`#/templates/${editingTemplate.type.toLowerCase()}`, { type: null, name: null })}
               />
             ) : (
               <TemplateListPage
-                onCreate={(type) => setEditingTemplate({ type, name: null })}
-                onEdit={(type, name) => setEditingTemplate({ type, name })}
+                initialTab={templateListTab}
+                onTabChange={(tab) => {
+                  setTemplateListTab(tab);
+                  window.history.replaceState(null, '', `#/templates/${tab.toLowerCase()}`);
+                }}
+                onCreate={(type) => openTemplateRoute(`#/templates/${type.toLowerCase()}/new`, { type, name: null })}
+                onEdit={(type, name) => openTemplateRoute(`#/templates/${type.toLowerCase()}/edit/${encodeURIComponent(name)}`, { type, name })}
               />
             )
           )}
@@ -786,9 +861,9 @@ export function AppContent() {
 
       <QuickAddJobOpeningModal
         isOpen={isNewJobOpeningOpen}
-        onClose={() => { setIsNewJobOpeningOpen(false); setEditingJobOpening(null); }}
-        job={editingJobOpening}
-        onAdd={handleCreateJobOpening}
+        onClose={() => { setIsNewJobOpeningOpen(false); setEditingJob(null); }}
+        job={editingJob}
+        onAdd={handleSaveJobOpening}
         isSubmitting={isActionLoading}
         departments={departments}
       />

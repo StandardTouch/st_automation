@@ -7,6 +7,15 @@ import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatDateTime, formatDate } from '../../api/client';
 
+// "[user] Rating: 4/5 | Rec: Pass | Notes: ..." -> "4/5 · Pass"
+export function formatRatingSummary(summary) {
+  if (!summary) return '';
+  const rating = summary.match(/Rating:\s*([\d.]+\/5)/i)?.[1];
+  const rec = summary.match(/Rec:\s*([^|]+)/i)?.[1]?.trim();
+  if (!rating && !rec) return summary;
+  return [rating && `${rating} stars`, rec].filter(Boolean).join(' · ');
+}
+
 export function KanbanBoard({
   pipelineData,
   isLoading,
@@ -149,7 +158,7 @@ export function KanbanBoard({
                           )}
                         </div>
                         <p className="text-sm text-brand-grey truncate mt-0.5">
-                          {applicant.job_title || 'General Applicant'}
+                          {applicant.job_opening_title || applicant.job_title || 'General Applicant'}
                         </p>
                       </div>
 
@@ -157,7 +166,7 @@ export function KanbanBoard({
                       {applicant.interview_rating_summary && (
                         <div className="bg-emerald-50 border border-emerald-100 p-2 rounded-lg text-[13px] text-emerald-700 font-medium flex items-center gap-1.5">
                           <Star className="h-3.5 w-3.5 text-amber-500 shrink-0 fill-amber-500" />
-                          <span className="truncate">{applicant.interview_rating_summary}</span>
+                          <span className="truncate">{formatRatingSummary(applicant.interview_rating_summary)}</span>
                         </div>
                       )}
 

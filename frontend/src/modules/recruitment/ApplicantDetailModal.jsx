@@ -8,6 +8,8 @@ import { SlideOver } from '../../components/common/SlideOver';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatDate, formatDateTime, callApi, uploadFile } from '../../api/client';
+import { formatRatingSummary } from './KanbanBoard';
+import { recruitmentApi } from '../../api/recruitmentApi';
 import { useToast } from '../../components/common/Toast';
 import EmployeeSelect from '../../components/EmployeeSelect';
 import { DateInput } from '../../components/common/DateInput';
@@ -50,13 +52,61 @@ export function ApplicantDetailModal({
   }, [applicant?.name]);
 
   const [scheduledInterviews, setScheduledInterviews] = useState([]);
+  // Editing a scheduled interview: { id, time, interviewers } or null
+  const [editingInterview, setEditingInterview] = useState(null);
+  const [isSavingInterview, setIsSavingInterview] = useState(false);
+
+  const toLocalInput = (iso) => (iso ? String(iso).slice(0, 16) : '');
+
+  const startEditInterview = (iv) => {
+    setEditingInterview({
+      id: iv.name,
+      time: toLocalInput(iv.scheduled_on),
+      interviewers: (iv.interviewer_employees || []).filter(Boolean),
+    });
+  };
+
+  const saveInterviewEdit = async () => {
+    if (!editingInterview) return;
+    if (!editingInterview.time) { addToast('Please select a date and time.', 'error'); return; }
+    if (!editingInterview.interviewers.length) { addToast('Please select at least one interviewer.', 'error'); return; }
+    setIsSavingInterview(true);
+    try {
+      const res = await recruitmentApi.updateInterview(editingInterview.id, {
+        scheduled_time: editingInterview.time,
+        interviewers: JSON.stringify(editingInterview.interviewers),
+      });
+      addToast(res.message || 'Interview updated.', 'success');
+      setEditingInterview(null);
+      loadInterviews();
+    } catch (err) {
+      addToast(err.message || 'Failed to update interview', 'error');
+    } finally {
+      setIsSavingInterview(false);
+    }
+  };
+
+  const cancelInterview = async (iv) => {
+    if (!window.confirm(`Cancel interview ${iv.name}? This cannot be undone.`)) return;
+    try {
+      const res = await recruitmentApi.cancelInterview(iv.name);
+      addToast(res.message || 'Interview cancelled.', 'success');
+      setEditingInterview(null);
+      loadInterviews();
+    } catch (err) {
+      addToast(err.message || 'Failed to cancel interview', 'error');
+    }
+  };
   const [isLoadingInterviews, setIsLoadingInterviews] = useState(false);
 
+  // Reload every time the drawer opens, not only when the applicant changes:
+  // reopening the same candidate used to show the previously cached interviews.
   useEffect(() => {
-    if (applicant?.name) {
+    if (isOpen && applicant?.name) {
+      setScheduledInterviews([]);
       loadInterviews();
     }
-  }, [applicant?.name]);
+  }, [isOpen, applicant?.name]);
 
   const loadInterviews = async () => {
     setIsLoadingInterviews(true);
@@ -146,7 +196,7 @@ export function ApplicantDetailModal({
       isOpen={isOpen}
       onClose={onClose}
       title={applicant.applicant_name}
-      subtitle={applicant.job_title || 'Applicant Profile'}
+      subtitle={applicant.job_opening_title || applicant.job_title || 'Applicant Profile'}
       width="max-w-4xl"
     >
       <div className="space-y-6 pb-24">
@@ -204,7 +254,10 @@ export function ApplicantDetailModal({
                     <div className="flex items-center gap-4 text-right">
                       <div>
                         <span className="text-[12px] uppercase font-bold text-gray-400 dark:text-slate-500 block mb-0.5">Interviewers</span>
-                        <div className="flex -space-x-2">
+                        <div className="text-[13px] font-semibold text-gray-800 dark:text-slate-100 mb-1 max-w-[220px]">
+                          {(iv.interviewer_names && iv.interviewer_names.length ? iv.interviewer_names : iv.interviewers || []).join(', ') || 'Not assigned'}
+                        </div>
+                        <div className="flex -space-x-2 justify-end">
                           {iv.interviewers?.map((emp, i) => (
                             <div key={i} className="w-6 h-6 rounded-full bg-brand-red text-white flex items-center justify-center text-[12px] font-bold border-2 border-white ring-1 ring-gray-100" title={emp}>
                               {emp.substring(0, 2).toUpperCase()}
@@ -217,6 +270,39 @@ export function ApplicantDetailModal({
                       </Badge>
                     </div>
                   </div>
+                  {/* Actions: only while interview is pending and has no feedback */}
+                  {iv.status === 'Pending' && !(iv.feedbacks && iv.feedbacks.length) && (
+                    editingInterview?.id === iv.name ? (
+                      <div className="space-y-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+                        <div>
+                          <label className="block text-[13px] font-bold text-gray-700 dark:text-slate-200 mb-1">Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={editingInterview.time}
+                            onChange={(e) => setEditingInterview({ ...editingInterview, time: e.target.value })}
+                            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[13px] font-bold text-gray-700 dark:text-slate-200 mb-1">Interviewers</label>
+                          <EmployeeSelect
+                            multiple
+                            value={editingInterview.interviewers}
+                            onChange={(vals) => setEditingInterview({ ...editingInterview, interviewers: vals })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" onClick={() => setEditingInterview(null)}>Close</Button>
+                          <Button variant="primary" isLoading={isSavingInterview} onClick={saveInterviewEdit}>Save Changes</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-slate-700">
+                        <Button variant="secondary" onClick={() => startEditInterview(iv)}>Reschedule / Edit</Button>
+                        <Button variant="danger" onClick={() => cancelInterview(iv)}>Cancel Interview</Button>
+                      </div>
+                    )
+                  )}
                   {/* Feedbacks Section */}
                   {iv.feedbacks && iv.feedbacks.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700 space-y-2">
@@ -323,7 +409,7 @@ export function ApplicantDetailModal({
               <span>Interviewer Feedback Summary</span>
             </div>
             <p className="text-sm text-gray-800 dark:text-slate-100 bg-white dark:bg-slate-800 p-3 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
-              {applicant.interview_rating_summary}
+              {formatRatingSummary(applicant.interview_rating_summary)}
             </p>
           </div>
         )}
@@ -435,6 +521,16 @@ export function ApplicantDetailModal({
                 Reject
               </Button>
 
+              {!applicant.employee && (
+                <Button
+                  variant="secondary"
+                  isLoading={isActionLoading}
+                  onClick={() => handleTriggerDecision('Bench')}
+                >
+                  Talent Pool / Bench
+                </Button>
+              )}
+
               <Button
                 variant="secondary"
                 icon={Send}
@@ -517,6 +613,19 @@ export function ApplicantDetailModal({
               {selectedDecision === 'Reconsider' && 'This will move the candidate back into the active pipeline so you can make a fresh Select / Bench / Reject decision for a new role.'}
               {selectedDecision === 'Reject' && 'This will mark candidate as Rejected and trigger a polite notification email.'}
             </p>
+            {selectedDecision === 'Select' && (
+              scheduledInterviews.length === 0 ? (
+                <p className="mt-3 text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  No interview has been scheduled for this candidate yet.
+                </p>
+              ) : !scheduledInterviews.some((iv) => iv.feedbacks && iv.feedbacks.length > 0) ? (
+                <p className="mt-3 text-sm font-semibold text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  No interview feedback has been submitted yet.
+                </p>
+              ) : null
+            )}
 
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1">Optional Notes / Reason</label>

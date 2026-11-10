@@ -5,6 +5,7 @@ from frappe.utils import (
 )
 import json
 from datetime import datetime, timedelta
+from frappe.rate_limiter import rate_limit
 from st_automation.api.utils import (
 	success_response, error_response, generate_secure_token,
 	get_site_booking_url, ensure_custom_fields_exist, safe_int,
@@ -58,6 +59,7 @@ def get_pipeline(job_opening=None, search=None, company=None):
 	"""
 	try:
 		filters = {}
+		or_filters = None
 		specific_job = job_opening if (job_opening and job_opening != "all") else None
 
 		# Job Applicant has no `company` field of its own — a candidate's
@@ -77,7 +79,12 @@ def get_pipeline(job_opening=None, search=None, company=None):
 				return success_response(empty_stages)
 			if not company_job_titles:
 				return success_response(empty_stages)
-			filters["job_title"] = specific_job if specific_job else ["in", company_job_titles]
+			if specific_job:
+				filters["job_title"] = specific_job
+			else:
+				# Include candidates with no job opening yet, so they do not
+				# vanish from the pipeline when a company is selected.
+				or_filters = [["job_title", "in", company_job_titles], ["job_title", "is", "not set"]]
 		elif specific_job:
 			filters["job_title"] = specific_job
 
@@ -90,9 +97,15 @@ def get_pipeline(job_opening=None, search=None, company=None):
 				"interview_rating_summary", "booked_slot_time"
 			],
 			filters=filters,
+			or_filters=or_filters,
 			order_by="creation desc",
 			limit=300
 		)
+
+		# Human-readable job title (job_title holds the Job Opening ID).
+		_titles = {j.name: j.job_title for j in frappe.get_all("Job Opening", fields=["name", "job_title"])}
+		for a in applicants:
+			a["job_opening_title"] = _titles.get(a.job_title) or a.job_title
 
 		if search:
 			q = search.lower()
@@ -469,32 +482,11 @@ def schedule_interview_round(applicant_id, round_number, interviewers, scheduled
 		# Resolve job_opening safely to avoid LinkValidationError from core ERPNext
 		job_opening_id = doc.job_title
 		if job_opening_id and not frappe.db.exists("Job Opening", job_opening_id):
-			found_job = frappe.db.get_value("Job Opening", {"job_title": job_opening_id})
-			if found_job:
-				job_opening_id = found_job
-			else:
-				# Auto-create the job opening to satisfy standard ERPNext validations
-				# Must have Designation and Company
-				default_company = frappe.defaults.get_user_default("Company") or frappe.db.get_value("Company", {"is_group": 0}, "name")
-				
-				# Auto-create Designation if it doesn't exist
-				if not frappe.db.exists("Designation", job_opening_id):
-					new_des = frappe.new_doc("Designation")
-					new_des.designation_name = job_opening_id
-					new_des.insert(ignore_permissions=True)
-					
-				new_jo = frappe.new_doc("Job Opening")
-				new_jo.job_title = job_opening_id
-				new_jo.designation = job_opening_id
-				new_jo.company = default_company
-				new_jo.status = "Open"
-				new_jo.flags.ignore_permissions = True
-				new_jo.flags.ignore_mandatory = True
-				new_jo.insert(ignore_permissions=True)
-				job_opening_id = new_jo.name
-				
-			# Update the applicant's job_title to point to the valid ID
-			doc.db_set("job_title", job_opening_id)
+			# Resolve by title; never auto-create (and publish) a new Job
+			# Opening just because an applicant carried free text.
+			job_opening_id = frappe.db.get_value("Job Opening", {"job_title": job_opening_id}) or None
+			if job_opening_id:
+				doc.db_set("job_title", job_opening_id)
 
 		if job_opening_id:
 			interview_doc.job_opening = job_opening_id
@@ -632,6 +624,7 @@ def get_applicant_details(applicant_id):
 			"email_id": doc.email_id,
 			"phone_number": doc.phone_number,
 			"job_title": doc.job_title,
+			"job_opening_title": (frappe.db.get_value("Job Opening", doc.job_title, "job_title") if doc.job_title else None) or doc.job_title,
 			"status": doc.status,
 			"stage": doc.status,
 			"creation": doc.creation,
@@ -692,6 +685,14 @@ def get_applicant_interviews(applicant_id):
 		for iv in interviews:
 			details = frappe.get_all("Interview Detail", filters={"parent": iv.name}, fields=["interviewer"])
 			iv["interviewers"] = [d.interviewer for d in details]
+			# Human-readable names so the UI can show who the interview is
+			# assigned to, not just two-letter initials of an email address.
+			iv["interviewer_employees"] = [
+				frappe.db.get_value("Employee", {"user_id": u}, "name") for u in iv["interviewers"]
+			]
+			iv["interviewer_names"] = [
+				frappe.db.get_value("User", u, "full_name") or u for u in iv["interviewers"]
+			]
 
 			# Fetch feedbacks from Comments on the Interview
 			iv["feedbacks"] = []
@@ -731,6 +732,95 @@ def get_applicant_interviews(applicant_id):
 		return success_response(interviews)
 	except Exception as e:
 		return error_response(f"Failed to fetch interviews: {str(e)}", e)
+
+
+def _interview_has_feedback(interview_name):
+	return bool(frappe.db.exists("Interview Feedback", {"interview": interview_name})) or bool(
+		frappe.db.exists("Comment", {"reference_doctype": "Interview", "reference_name": interview_name, "content": ["like", "Feedback from %"]})
+	)
+
+
+@frappe.whitelist()
+def update_interview(interview_id, scheduled_time=None, interviewers=None):
+	"""Reschedules an interview and/or changes its interviewers (before feedback exists)."""
+	try:
+		if not interview_id or not frappe.db.exists("Interview", interview_id):
+			return error_response("Interview not found.")
+		doc = frappe.get_doc("Interview", interview_id)
+		if doc.status != "Pending":
+			return error_response(f"This interview is already {doc.status} and can no longer be changed.")
+		if _interview_has_feedback(interview_id):
+			return error_response("Feedback has already been submitted for this interview, so it can no longer be changed.")
+
+		changes = []
+		new_schedule = None
+		if scheduled_time:
+			sched_date, sched_time = split_datetime(scheduled_time)
+			new_schedule = {
+				"scheduled_on": sched_date,
+				"from_time": sched_time,
+				"to_time": sched_time + timedelta(minutes=30),
+			}
+			changes.append(f"time to {format_datetime(scheduled_time)}")
+
+		if interviewers is not None:
+			if isinstance(interviewers, str):
+				interviewers = json.loads(interviewers)
+			if not interviewers:
+				return error_response("At least one interviewer must be selected.")
+			users = []
+			for emp in interviewers:
+				user_id = frappe.db.get_value("Employee", emp, "user_id")
+				if not user_id:
+					email = frappe.db.get_value("Employee", emp, "company_email") or frappe.db.get_value("Employee", emp, "personal_email")
+					if email and frappe.db.exists("User", email):
+						user_id = email
+				if user_id:
+					users.append(user_id)
+			if not users:
+				return error_response("None of the selected interviewers has a user account.")
+			doc.set("interview_details", [])
+			for u in users:
+				doc.append("interview_details", {"interviewer": u})
+			changes.append("interviewers to " + ", ".join(users))
+
+		if not changes:
+			return error_response("Nothing to update.")
+
+		doc.flags.ignore_permissions = True
+		doc.flags.ignore_mandatory = True
+		doc.save(ignore_permissions=True)
+		# HRMS marks `scheduled_on` as set-only-once, so a normal save rejects a
+		# reschedule. Write the schedule fields directly, after the save.
+		if new_schedule:
+			frappe.db.set_value("Interview", doc.name, new_schedule, update_modified=True)
+		if doc.job_applicant and frappe.db.exists("Job Applicant", doc.job_applicant):
+			frappe.get_doc("Job Applicant", doc.job_applicant).add_comment("Comment", f"Interview {doc.name} updated: " + "; ".join(changes))
+		frappe.db.commit()
+		return success_response({"name": doc.name}, message=f"Interview {doc.name} updated.")
+	except Exception as e:
+		return error_response(f"Error updating interview: {str(e)}", e)
+
+
+@frappe.whitelist()
+def cancel_interview(interview_id):
+	"""Cancels (deletes) a pending interview that has no feedback yet."""
+	try:
+		if not interview_id or not frappe.db.exists("Interview", interview_id):
+			return error_response("Interview not found.")
+		doc = frappe.get_doc("Interview", interview_id)
+		if doc.status != "Pending":
+			return error_response(f"This interview is already {doc.status} and cannot be cancelled.")
+		if _interview_has_feedback(interview_id):
+			return error_response("Feedback has already been submitted for this interview, so it cannot be cancelled.")
+		applicant = doc.job_applicant
+		frappe.delete_doc("Interview", interview_id, ignore_permissions=True, force=True)
+		if applicant and frappe.db.exists("Job Applicant", applicant):
+			frappe.get_doc("Job Applicant", applicant).add_comment("Comment", f"Interview {interview_id} was cancelled.")
+		frappe.db.commit()
+		return success_response({"name": interview_id}, message=f"Interview {interview_id} cancelled.")
+	except Exception as e:
+		return error_response(f"Error cancelling interview: {str(e)}", e)
 
 
 @frappe.whitelist()
@@ -827,6 +917,22 @@ def submit_interview_feedback(interview_id, rating, recommendation, comments, sc
 
 		interview = frappe.get_doc("Interview", interview_id)
 
+		# --- input validation (applies to both the in-app and public paths) ---
+		try:
+			rating_val = int(rating)
+		except (ValueError, TypeError):
+			return error_response("Rating must be a whole number from 1 to 5.")
+		if rating_val < 1 or rating_val > 5:
+			return error_response("Rating must be a whole number from 1 to 5.")
+		rating = rating_val
+		if recommendation not in FEEDBACK_RECOMMENDATIONS:
+			return error_response("Please choose a valid hiring recommendation.")
+		comments = (comments or "").strip()
+		if not comments:
+			return error_response("Please add a short comment explaining your rating.")
+		if len(comments) > 2000:
+			return error_response("Comments are too long (maximum 2000 characters).")
+
 		if token:
 			# Guest path: the token must match one of the per-interviewer
 			# tokens generated when this round was scheduled, and is
@@ -846,6 +952,15 @@ def submit_interview_feedback(interview_id, rating, recommendation, comments, sc
 		elif not frappe.session.user or frappe.session.user == "Guest":
 			# No token and no logged-in session — neither authorization path applies.
 			return error_response("Not permitted. This feedback link may be invalid.")
+		else:
+			# Logged-in path: only an assigned interviewer or an HR admin may score.
+			assigned = [d.interviewer for d in frappe.get_all("Interview Detail", filters={"parent": interview.name}, fields=["interviewer"])]
+			roles = set(frappe.get_roles(frappe.session.user))
+			is_admin = frappe.session.user == "Administrator" or bool(roles & {"System Manager", "HR Manager"})
+			if frappe.session.user not in assigned and not is_admin:
+				return error_response("You are not assigned to this interview, so you cannot submit feedback for it.")
+			if frappe.db.exists("Comment", {"reference_doctype": "Interview", "reference_name": interview.name, "content": ["like", f"Feedback from {frappe.session.user}:%"]}):
+				return error_response("You have already submitted feedback for this interview.")
 
 		interview.status = "Cleared"
 		interview.flags.ignore_mandatory = True
@@ -875,6 +990,9 @@ def submit_interview_feedback(interview_id, rating, recommendation, comments, sc
 		return success_response(message="Feedback submitted successfully!")
 	except Exception as e:
 		return error_response(f"Error submitting feedback: {str(e)}", e)
+
+
+FEEDBACK_RECOMMENDATIONS = ("Strong Hire", "Pass", "Hold", "Fail", "Strongly Recommend", "Neutral", "Do Not Recommend")
 
 
 def _get_default_company():
@@ -965,10 +1083,24 @@ def record_decision(applicant_id, decision, notes=None, salary_offered=None, des
 					offer.job_applicant = doc.name
 					offer.applicant_name = doc.applicant_name
 					offer.applicant_email = doc.email_id
-					offer.designation = _resolve_designation(designation or doc.job_title)
+					# job_title holds a Job Opening ID; use that opening's real
+					# designation instead of creating a junk "HR-OPN-..." one.
+					opening_designation = frappe.db.get_value("Job Opening", doc.job_title, "designation") if doc.job_title else None
+					offer.designation = _resolve_designation(designation or opening_designation or doc.job_title)
 					offer.company = _get_default_company()
 					offer.offer_date = nowdate()
 					offer.status = "Awaiting Response"
+					offer.candidate_name = doc.applicant_name
+					# Same defaults as the Offer Letter form, so the printed letter
+					# never shows "None" for these terms.
+					offer.training_duration = "6 months"
+					offer.training_stipend = "INR 5,000/month"
+					offer.salary_range = "INR 10,000 - 15,000/month"
+					offer.contract_duration = "24 Months + 6 months of Training"
+					offer.reporting_manager = "Mr. Abdul Nasir Mauzam Ali"
+					offer.hr_signatory_name = "Muzammil Siddiqui"
+					from st_automation.api.offer_letter import DEFAULT_RESPONSIBILITIES  # lazy: avoids circular import
+					offer.responsibilities_text = "\n".join(DEFAULT_RESPONSIBILITIES)
 					offer.flags.ignore_permissions = True
 					offer.flags.ignore_mandatory = True
 					offer.insert(ignore_permissions=True)
@@ -1087,6 +1219,23 @@ def quick_add_applicant(applicant_name, email_id, phone_number=None, job_title=N
 	try:
 		if not applicant_name or not email_id:
 			return error_response("Candidate Name and Email are required.")
+		if not job_title:
+			return error_response("Please select a target job opening for this candidate.")
+
+		applicant_name = applicant_name.strip()
+		email_id = email_id.strip()
+		if len(applicant_name) > 140:
+			return error_response("Name is too long (maximum 140 characters).")
+		existing = frappe.db.get_value("Job Applicant", {"email_id": email_id}, ["name", "status"], as_dict=True)
+		if existing:
+			return error_response(f"A candidate with the email {email_id} already exists in the pipeline (status: {existing.status}).")
+		if job_title:
+			resolved_job = job_title if frappe.db.exists("Job Opening", job_title) else frappe.db.get_value("Job Opening", {"job_title": job_title})
+			if not resolved_job:
+				return error_response("The selected job opening was not found. Please pick an existing job opening.")
+			job_title = resolved_job
+		if resume_attachment and not str(resume_attachment).startswith(("/files/", "/private/files/")):
+			return error_response("Invalid resume file reference.")
 
 		doc = frappe.new_doc("Job Applicant")
 		doc.applicant_name = applicant_name
@@ -1129,6 +1278,12 @@ def create_job_opening(job_title, company, department=None, vacancies=1, publish
 		if not company:
 			return error_response("Company is required.")
 
+		vac, vac_err = _validate_vacancies(vacancies)
+		if vac_err:
+			return error_response(vac_err)
+		if frappe.db.exists("Job Opening", {"job_title": job_title.strip(), "company": company}):
+			return error_response(f"A job opening titled '{job_title.strip()}' already exists for {company}. Edit the existing one or use a different title.")
+
 		designation = _resolve_designation(job_title.strip())
 		if not designation:
 			return error_response(f"Could not resolve or create a Designation for '{job_title}'.")
@@ -1138,7 +1293,7 @@ def create_job_opening(job_title, company, department=None, vacancies=1, publish
 		opening.designation = designation
 		opening.company = company
 		opening.status = "Open"
-		opening.vacancies = safe_int(vacancies, 1) or 1
+		opening.vacancies = vac
 		opening.publish = 1 if cint(publish) else 0
 		if department:
 			resolved_dept = _resolve_department(department, company)
@@ -1157,6 +1312,67 @@ def create_job_opening(job_title, company, department=None, vacancies=1, publish
 		)
 	except Exception as e:
 		return error_response(f"Error creating job opening: {str(e)}", e)
+
+
+def _validate_vacancies(vacancies):
+	"""Returns (int_value, error_message). Vacancies must be a whole number 1-1000."""
+	if vacancies is None or str(vacancies).strip() == "":
+		return 1, None
+	try:
+		vac = int(str(vacancies).strip())
+	except (ValueError, TypeError):
+		return None, "Vacancies must be a whole number."
+	if vac < 1 or vac > 1000:
+		return None, "Vacancies must be between 1 and 1000."
+	return vac, None
+
+
+@frappe.whitelist()
+def update_job_opening(job_name=None, job_opening_id=None, job_title=None, department=None, vacancies=None, publish=None, status=None, description=None):
+	"""Edits an existing Job Opening (title, department, vacancies, status, visibility)."""
+	try:
+		target_id = job_name or job_opening_id
+		if not target_id or not frappe.db.exists("Job Opening", target_id):
+			return error_response("Job Opening not found.")
+		doc = frappe.get_doc("Job Opening", target_id)
+
+		if job_title is not None:
+			title = job_title.strip()
+			if not title:
+				return error_response("Job title is required.")
+			if title != doc.job_title:
+				if frappe.db.exists("Job Opening", {"job_title": title, "company": doc.company, "name": ["!=", doc.name]}):
+					return error_response(f"Another job opening titled '{title}' already exists for {doc.company}.")
+				if doc.designation == doc.job_title:
+					doc.designation = _resolve_designation(title) or doc.designation
+				doc.job_title = title
+		if vacancies is not None:
+			vac, vac_err = _validate_vacancies(vacancies)
+			if vac_err:
+				return error_response(vac_err)
+			doc.vacancies = vac
+		if publish is not None:
+			doc.publish = 1 if cint(publish) else 0
+		if status is not None:
+			if status not in ("Open", "Closed"):
+				return error_response("Status must be Open or Closed.")
+			doc.status = status
+		if department is not None:
+			if department:
+				resolved = _resolve_department(department, doc.company)
+				if resolved:
+					doc.department = resolved
+			else:
+				doc.department = None
+		if description is not None:
+			doc.description = description
+
+		doc.flags.ignore_permissions = True
+		doc.save(ignore_permissions=True)
+		frappe.db.commit()
+		return success_response({"name": doc.name, "job_title": doc.job_title}, message=f"Job Opening '{doc.job_title}' updated!")
+	except Exception as e:
+		return error_response(f"Error updating job opening: {str(e)}", e)
 
 
 @frappe.whitelist()
@@ -1193,41 +1409,6 @@ def get_departments(company=None):
 		return success_response({"departments": departments})
 	except Exception as e:
 		return error_response("Error loading departments", e)
-
-
-@frappe.whitelist()
-def update_job_opening(job_opening_id, job_title=None, department=None, vacancies=None,
-		status=None, publish=None, description=None):
-	"""Edits an existing Job Opening (the "U" next to create/toggle/delete)."""
-	try:
-		doc = frappe.get_doc("Job Opening", job_opening_id)
-
-		if job_title is not None:
-			new_title = job_title.strip()
-			if not new_title:
-				return error_response("Job title is required.")
-			# Only re-point the Designation when it was the one auto-created from
-			# the old title; a hand-picked Designation is left alone.
-			if new_title != doc.job_title and doc.designation == doc.job_title:
-				doc.designation = _resolve_designation(new_title) or doc.designation
-			doc.job_title = new_title
-		if department is not None:
-			doc.department = _resolve_department(department, doc.company) if department else None
-		if vacancies is not None:
-			doc.vacancies = safe_int(vacancies, 1) or 1
-		if status in ("Open", "Closed"):
-			doc.status = status
-		if publish is not None:
-			doc.publish = 1 if cint(publish) else 0
-		if description is not None:
-			doc.description = description
-
-		doc.flags.ignore_permissions = True
-		doc.save(ignore_permissions=True)
-		frappe.db.commit()
-		return success_response({"name": doc.name}, message=f"Job Opening '{doc.job_title}' updated!")
-	except Exception as e:
-		return error_response(f"Error updating job opening: {str(e)}", e)
 
 
 @frappe.whitelist()
@@ -1430,7 +1611,7 @@ def get_active_jobs():
 	try:
 		jobs = frappe.get_all(
 			"Job Opening",
-			filters={"publish": 1},
+			filters={"publish": 1, "status": "Open"},
 			fields=["name", "job_title", "department", "company", "description", "route"],
 			order_by="creation desc"
 		)
@@ -1439,45 +1620,101 @@ def get_active_jobs():
 		return error_response(f"Failed to fetch jobs: {str(e)}", e)
 
 
+ALLOWED_RESUME_EXT = (".pdf", ".doc", ".docx")
+MAX_RESUME_BYTES = 5 * 1024 * 1024
+
+
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=20, seconds=600)
 def submit_job_application(job_title, applicant_name, email_id, phone_number=None, cover_letter=None, resume_base64=None, resume_name=None):
 	"""Creates a Job Applicant from the public careers page."""
 	try:
+		import base64
+		import os
+		from frappe.utils import validate_email_address
+
+		applicant_name = (applicant_name or "").strip()
+		email_id = (email_id or "").strip()
+		if not applicant_name or not email_id:
+			return error_response("Name and email are required.")
+		if len(applicant_name) > 140:
+			return error_response("Name is too long (maximum 140 characters).")
+		if not validate_email_address(email_id):
+			return error_response("Please enter a valid email address.")
+
+		# The position must exist, be published and still be open.
+		job = frappe.db.get_value("Job Opening", job_title, ["name", "publish", "status"], as_dict=True) if job_title else None
+		if not job or not job.publish or job.status != "Open":
+			return error_response("This position is no longer accepting applications.")
+
+		if frappe.db.exists("Job Applicant", {"email_id": email_id, "job_title": job.name}):
+			return error_response("You have already applied for this position with this email address.")
+		job_display = frappe.utils.escape_html(frappe.db.get_value("Job Opening", job.name, "job_title") or "Open Role")
+
+		# Validate the resume BEFORE creating anything, so a bad file never
+		# leaves a half-created application behind.
+		file_content = None
+		safe_name = None
+		if resume_base64 and resume_name:
+			safe_name = os.path.basename(str(resume_name)).strip()
+			if not safe_name or safe_name != str(resume_name).strip():
+				return error_response("Invalid file name.")
+			if not safe_name.lower().endswith(ALLOWED_RESUME_EXT):
+				return error_response("Resume must be a PDF, DOC or DOCX file.")
+			payload = resume_base64.split(",", 1)[1] if "," in resume_base64 else resume_base64
+			if len(payload) > int(MAX_RESUME_BYTES * 1.4):
+				return error_response("Resume must be 5MB or smaller.")
+			try:
+				file_content = base64.b64decode(payload)
+			except Exception:
+				return error_response("The resume file could not be read. Please upload it again.")
+			if len(file_content) > MAX_RESUME_BYTES:
+				return error_response("Resume must be 5MB or smaller.")
+
 		app = frappe.new_doc("Job Applicant")
-		app.job_title = job_title
+		app.job_title = job.name
 		app.applicant_name = applicant_name
 		app.email_id = email_id
 		app.phone_number = phone_number
 		app.cover_letter = cover_letter
 		app.status = "Open"
-		
+
 		# Ensure source exists or leave empty
 		if frappe.db.exists("Source", "Careers Website"):
 			app.source = "Careers Website"
-			
+
 		app.flags.ignore_permissions = True
 		app.flags.ignore_mandatory = True
 		app.insert(ignore_permissions=True)
 		frappe.db.commit()
-		
+
 		# Process file upload if present
-		if resume_base64 and resume_name:
-			import base64
+		if file_content is not None:
 			from frappe.utils.file_manager import save_file
-			
-			# Extract the pure base64 part, e.g. "data:application/pdf;base64,JVBERi..."
-			if "," in resume_base64:
-				resume_base64 = resume_base64.split(",")[1]
-			
-			file_content = base64.b64decode(resume_base64)
-			saved_file = save_file(
-				fname=resume_name,
-				content=file_content,
-				dt="Job Applicant",
-				dn=app.name,
-				folder="Home/Attachments",
-				is_private=1
-			)
+			# Guests may not create private files (frappe raises PermissionError), so
+			# the resume never attached for public applicants. The file has already
+			# been type/size checked above; elevate only for this single save.
+			previous_user = frappe.session.user
+			try:
+				frappe.set_user("Administrator")
+				saved_file = save_file(
+					fname=safe_name,
+					content=file_content,
+					dt="Job Applicant",
+					dn=app.name,
+					folder="Home/Attachments",
+					is_private=1
+				)
+			except Exception:
+				err_trace = frappe.get_traceback()
+				frappe.db.rollback()
+				frappe.log_error(title="Careers resume upload failed", message=err_trace)
+				frappe.delete_doc("Job Applicant", app.name, ignore_permissions=True, force=True)
+				frappe.db.commit()
+				frappe.set_user(previous_user)
+				return error_response("The resume file looks corrupted or is not a valid document. Please upload a valid PDF, DOC or DOCX file.")
+			finally:
+				frappe.set_user(previous_user)
 			app.resume_attachment = saved_file.file_url
 			app.save(ignore_permissions=True)
 			frappe.db.commit()
@@ -1485,12 +1722,12 @@ def submit_job_application(job_title, applicant_name, email_id, phone_number=Non
 		# Send application acknowledgement to applicant and CC HR Managers
 		if email_id:
 			try:
-				ack_subject = f"Application Received: {job_title or 'Open Role'} — Standard Touch"
+				ack_subject = f"Application Received: {job_display} — Standard Touch"
 				ack_message = f"""
 				<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
 					<h2 style="color: #ef4444; margin-top: 0;">Application Received</h2>
-					<p>Dear {applicant_name},</p>
-					<p>Thank you for applying for the position of <strong>{job_title or 'Open Role'}</strong> at Standard Touch.</p>
+					<p>Dear {frappe.utils.escape_html(applicant_name)},</p>
+					<p>Thank you for applying for the position of <strong>{job_display}</strong> at Standard Touch.</p>
 					<p>We have successfully received your application and resume. Our recruitment team is currently reviewing profiles and will contact you if your qualifications match our current requirements.</p>
 					<div style="background-color: #f8fafc; padding: 14px; border-radius: 6px; margin: 18px 0; border-left: 4px solid #ef4444;">
 						<p style="margin: 0; font-size: 13px; color: #475569;">Application Reference ID: <strong>{app.name}</strong></p>

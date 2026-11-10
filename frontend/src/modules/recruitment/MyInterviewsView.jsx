@@ -39,7 +39,7 @@ export function MyInterviewsView({ interviews = [], onOpenFeedback, onOpenCandid
                   <h3 className="text-base font-bold text-brand-black dark:text-slate-50 tracking-tight">{item.applicant_name}</h3>
                   <p className="text-sm text-brand-red font-semibold mt-0.5">{item.job_title}</p>
                 </div>
-                <Badge variant={item.status === 'Completed' ? 'success' : 'primary'}>
+                <Badge variant={['Completed', 'Cleared'].includes(item.status) ? 'success' : 'primary'}>
                   {item.status || 'Scheduled'}
                 </Badge>
               </div>
@@ -75,14 +75,18 @@ export function MyInterviewsView({ interviews = [], onOpenFeedback, onOpenCandid
                       View Candidate
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant={item.status === 'Completed' ? 'secondary' : 'primary'}
-                    icon={MessageSquare}
-                    onClick={() => onOpenFeedback(item)}
-                  >
-                    {item.status === 'Completed' ? 'Update Feedback' : 'Submit Feedback'}
-                  </Button>
+                  {['Completed', 'Cleared', 'Rejected', 'Under Review'].includes(item.status) ? (
+                    <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Feedback submitted</span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      icon={MessageSquare}
+                      onClick={() => onOpenFeedback(item)}
+                    >
+                      Submit Feedback
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

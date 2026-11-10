@@ -5,25 +5,30 @@ import { Button } from '../../components/common/Button';
 
 export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, departments = [], job = null }) {
   const isEdit = !!job;
-  const blank = { job_title: '', department: '', vacancies: 1, publish: false, status: 'Open', description: '' };
-  const [formData, setFormData] = useState(blank);
+  const EMPTY = { job_title: '', department: '', vacancies: 1, publish: false, status: 'Open', description: '' };
+  const [formData, setFormData] = useState(EMPTY);
+  const [error, setError] = useState('');
 
-  // Prefill when editing an existing opening; reset to blank for a new one.
+  // Reset on open; prefill when editing an existing opening.
   useEffect(() => {
     if (!isOpen) return;
+    setError('');
     setFormData(job ? {
       job_title: job.job_title || '',
       department: job.department || '',
-      vacancies: job.vacancies || 1,
+      vacancies: job.vacancies > 0 ? job.vacancies : 1,
       publish: !!job.publish,
       status: job.status || 'Open',
       description: job.description || '',
-    } : blank);
+    } : EMPTY);
   }, [isOpen, job]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.job_title.trim()) return;
+    if (!formData.job_title.trim()) { setError('Job title is required.'); return; }
+    const vac = Number(formData.vacancies);
+    if (!Number.isInteger(vac) || vac < 1 || vac > 1000) { setError('Vacancies must be a whole number between 1 and 1000.'); return; }
+    setError('');
     onAdd(formData);
   };
 
@@ -32,7 +37,7 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
       isOpen={isOpen}
       onClose={onClose}
       title={isEdit ? 'Edit Job Opening' : 'New Job Opening'}
-      subtitle={isEdit ? job.name : "Post a role — a Designation is created automatically if it doesn't exist yet."}
+      subtitle={isEdit ? (job?.name ? `Editing ${job.name}` : 'Update role details, vacancies and visibility.') : "Post a role — a Designation is created automatically if it doesn't exist yet."}
       maxWidth="max-w-md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,6 +76,8 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
             <input
               type="number"
               min="1"
+              max="1000"
+              step="1"
               value={formData.vacancies}
               onChange={(e) => setFormData({ ...formData, vacancies: e.target.value })}
               className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
@@ -101,7 +108,6 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
             className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
           />
         </div>
-
         <label className="flex items-center gap-2.5 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -111,6 +117,8 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
           />
           <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">{isEdit ? 'Published on career portal' : 'Publish on career portal right away'}</span>
         </label>
+
+        {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
           <Button variant="ghost" type="button" onClick={onClose}>

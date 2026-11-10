@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { templateApi } from '../../api/templateApi';
 import { useToast } from '../../components/common/Toast';
 import { ArrowLeft, Save, Plus, Trash2, GripVertical, Settings2 } from 'lucide-react';
@@ -19,24 +19,53 @@ export function TemplateFormPage({ templateType, templateName, onBack }) {
     activities: []
   });
 
+  // Unsaved work is kept as a local draft so leaving the page (back button,
+  // refresh, sidebar) never loses what was typed.
+  const draftKey = `st_tpl_draft:${templateType}:${templateName || 'new'}`;
+  const initialSnapshot = useRef('');
+  const [isReady, setIsReady] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+
+  const readDraft = () => {
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || Date.now() - parsed.savedAt > 7 * 24 * 3600 * 1000) return null;
+      return parsed.data;
+    } catch (_) { return null; }
+  };
+  const clearDraft = () => { try { localStorage.removeItem(draftKey); } catch (_) { /* ignore */ } };
+
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
+      setIsReady(false);
       try {
         const opts = await templateApi.getOptions();
         setOptions(opts.data);
-        
+
+        let base;
         if (templateName) {
           const res = await templateApi.getTemplate(templateType, templateName);
-          setFormData(res.data);
+          base = res.data;
         } else {
           // Initialize with one empty activity
-          setFormData(prev => ({
-            ...prev,
-            title: `New ${templateType} Template`,
+          base = {
+            name: '', title: `New ${templateType} Template`, company: '', department: '', designation: '', employee_grade: '',
             activities: [{ id: Date.now(), activity_name: '', user: '', role: '', begin_on: 0, duration: 1, task_weight: 1, required_for_employee_creation: 0, description: '' }]
-          }));
+          };
         }
+        initialSnapshot.current = JSON.stringify(base);
+        const draft = readDraft();
+        if (draft && JSON.stringify(draft) !== initialSnapshot.current) {
+          setFormData(draft);
+          setDraftRestored(true);
+        } else {
+          setFormData(base);
+        }
+        setIsReady(true);
       } catch (err) {
         addToast(err.message || 'Failed to initialize', 'error');
         onBack();
@@ -46,6 +75,27 @@ export function TemplateFormPage({ templateType, templateName, onBack }) {
     };
     init();
   }, [templateType, templateName]);
+
+  const isDirty = isReady && JSON.stringify(formData) !== initialSnapshot.current;
+
+  useEffect(() => {
+    if (!isReady) return;
+    try {
+      if (isDirty) localStorage.setItem(draftKey, JSON.stringify({ savedAt: Date.now(), data: formData }));
+      else localStorage.removeItem(draftKey);
+    } catch (_) { /* storage unavailable */ }
+  }, [formData, isReady]);
+
+  useEffect(() => {
+    const warn = (e) => { if (isDirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isDirty]);
+
+  const requestLeave = () => {
+    if (isDirty) setShowLeaveConfirm(true);
+    else onBack();
+  };
 
   const handleSave = async () => {
     if (!formData.title) {
@@ -61,6 +111,8 @@ export function TemplateFormPage({ templateType, templateName, onBack }) {
     setIsSaving(true);
     try {
       await templateApi.saveTemplate(templateType, formData);
+      clearDraft();
+      initialSnapshot.current = JSON.stringify(formData);
       addToast('Template saved successfully', 'success');
       onBack();
     } catch (err) {
@@ -107,16 +159,46 @@ export function TemplateFormPage({ templateType, templateName, onBack }) {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
+      {draftRestored && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          <span>Your unsaved draft was restored. Save to keep it, or discard it to start over.</span>
+          <button
+            onClick={() => {
+              clearDraft();
+              setFormData(JSON.parse(initialSnapshot.current));
+              setDraftRestored(false);
+            }}
+            className="shrink-0 font-bold underline hover:no-underline"
+          >
+            Discard draft
+          </button>
+        </div>
+      )}
+
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">You have unsaved changes</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-300">Your work is saved as a draft on this device, so you can come back to it. Do you want to leave now?</p>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button onClick={() => setShowLeaveConfirm(false)} className="px-4 py-2 rounded-xl text-sm font-bold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700">Keep editing</button>
+              <button onClick={() => { setShowLeaveConfirm(false); onBack(); }} className="px-4 py-2 rounded-xl text-sm font-bold bg-slate-800 text-white hover:bg-slate-700">Leave, keep draft</button>
+              <button onClick={() => { clearDraft(); setShowLeaveConfirm(false); onBack(); }} className="px-4 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700">Discard</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 sticky top-4 z-10">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors">
+          <button onClick={requestLeave} aria-label="Back to templates" className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 transition-colors">
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">
               {templateName ? 'Edit Template' : 'New Template'}
-            </h1>
+            </h2>
             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">{templateType} • {templateName || 'Unsaved'}</p>
           </div>
         </div>

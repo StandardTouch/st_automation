@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "qa-testing": {
+      "source": "rampstackco/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/qa-testing/SKILL.md",
+      "computedHash": "32f8c6076b9e96ed724cea1d526033c0596965ec8290d59ca5ea50b3b829ec15"
+    }
+  }
+}

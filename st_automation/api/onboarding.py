@@ -1,6 +1,6 @@
 import frappe
 from frappe.utils import now_datetime, add_to_date, nowdate, getdate
-from st_automation.api.utils import success_response, error_response, generate_secure_token, get_hr_manager_emails
+from st_automation.api.utils import success_response, error_response, generate_secure_token, get_hr_manager_emails, validate_assignable_user, clean_comment
 
 def get_site_onboarding_url(token):
     base_url = frappe.utils.get_url()
@@ -177,6 +177,9 @@ def start_onboarding(employee, template=None, joining_date=None):
 def complete_stage(employee, task_name, record_type="onboarding"):
     try:
         task = frappe.get_doc("Task", task_name)
+        # The task must belong to this employee's onboarding pipeline.
+        if not frappe.db.exists("Employee Onboarding", {"employee": employee, "project": task.project}):
+            return error_response("Task does not belong to this employee's pipeline.")
         if task.status == "Completed":
             return error_response("Task is already completed.")
 
@@ -223,8 +226,9 @@ def assign_task(task_name, user):
     try:
         if not frappe.db.exists("Task", task_name):
             return error_response("Task not found.")
-        if not frappe.db.exists("User", user):
-            return error_response("User not found.")
+        user_err = validate_assignable_user(user)
+        if user_err:
+            return error_response(user_err)
 
         from frappe.desk.form.assign_to import add as add_assign
         add_assign({
@@ -246,6 +250,9 @@ def add_task_comment(task_name, comment):
         if not frappe.db.exists("Task", task_name):
             return error_response("Task not found.")
 
+        comment, comment_err = clean_comment(comment)
+        if comment_err:
+            return error_response(comment_err)
         frappe.get_doc("Task", task_name).add_comment("Comment", comment)
         frappe.db.commit()
         return success_response(message="Comment added successfully.")
