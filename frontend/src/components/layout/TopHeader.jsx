@@ -8,31 +8,38 @@ export function TopHeader({
   onQuickAddCandidate, 
   onQuickAddIncentive,
   selectedCompany,
-  setSelectedCompany
+  setSelectedCompany,
+  activeTab
 }) {
   const isHR = userProfile?.is_hr_admin || userProfile?.is_system_manager;
   const isRecruiter = userProfile?.is_recruiter || isHR;
+  // Module actions only where they belong; Ctrl+K still offers both everywhere.
+  const PAYROLL_TABS = ['payroll-command', 'run-payroll', 'salary-structures', 'loans', 'salary-slips'];
+  const RECRUIT_TABS = ['recruitment-pipeline', 'job-openings', 'my-interviews', 'offer-letters'];
+  const showIncentive = isHR && (!activeTab || PAYROLL_TABS.includes(activeTab));
+  const showAddCandidate = isRecruiter && (!activeTab || RECRUIT_TABS.includes(activeTab));
 
   return (
     <header className="h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 mr-2">
         {/* Mobile Menu Button */}
         <button
           onClick={() => setIsMobileOpen(true)}
           aria-label="Open menu"
-          className="lg:hidden p-2 rounded-xl text-brand-grey hover:bg-gray-100 dark:bg-slate-800 hover:text-brand-black dark:text-slate-50 transition-colors"
+          className="lg:hidden shrink-0 p-2 rounded-xl text-brand-grey hover:bg-gray-100 dark:bg-slate-800 hover:text-brand-black dark:text-slate-50 transition-colors"
         >
           <Menu className="h-5 w-5" />
         </button>
 
         {/* Company Badge / Selector */}
         {userProfile?.companies && userProfile.companies.length > 1 ? (
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
-            <Building2 className="h-4 w-4 text-brand-red" />
+          <div className="flex items-center gap-2 min-w-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
+            <Building2 className="h-4 w-4 text-brand-red shrink-0" />
             <select
+              aria-label="Company"
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="bg-transparent text-sm font-semibold text-brand-black dark:text-slate-50 focus:outline-none cursor-pointer"
+              className="min-w-0 max-w-full truncate bg-transparent py-1.5 text-sm font-semibold text-brand-black dark:text-slate-50 focus:outline-none cursor-pointer"
             >
               {userProfile.companies.map((c) => (
                 <option key={c.name} value={c.name} className="bg-white dark:bg-slate-800 text-brand-black dark:text-slate-50">
@@ -60,35 +67,38 @@ export function TopHeader({
           type="button"
           onClick={() => window.dispatchEvent(new Event('st:open-command-palette'))}
           title="Search (Ctrl+K)"
-          className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 px-2.5 sm:px-3 py-1.5 text-sm text-brand-grey hover:border-brand-red transition-colors"
+          aria-label="Search Ctrl K"
+          className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 px-2.5 xl:px-3 py-1.5 text-sm text-brand-grey hover:border-brand-red transition-colors"
         >
           <Search className="h-4 w-4" />
-          <span className="hidden md:inline">Search…</span>
-          <kbd className="hidden md:inline text-[11px] font-bold border border-gray-300 dark:border-slate-600 rounded px-1.5 py-0.5">Ctrl K</kbd>
+          <span className="hidden xl:inline">Search</span>
+          <kbd className="hidden xl:inline text-[11px] font-bold border border-gray-300 dark:border-slate-600 rounded px-1.5 py-0.5">Ctrl K</kbd>
         </button>
-        {isRecruiter && (
+        {showAddCandidate && (
           <Button
             size="sm"
             variant="outline"
             icon={UserPlus}
             onClick={onQuickAddCandidate}
-            className="text-sm px-2.5 sm:px-3"
+            className="text-sm px-2.5 xl:px-3"
             title="Add Candidate"
+            aria-label="Add Candidate"
           >
-            <span className="hidden sm:inline">Add Candidate</span>
+            <span className="hidden xl:inline">Add Candidate</span>
           </Button>
         )}
 
-        {isHR && (
+        {showIncentive && (
           <Button
             size="sm"
             variant="primary"
             icon={Gift}
             onClick={onQuickAddIncentive}
-            className="text-sm px-2.5 sm:px-3"
+            className="text-sm px-2.5 xl:px-3"
             title="Quick Incentive"
+            aria-label="Quick Incentive"
           >
-            <span className="hidden sm:inline">Quick Incentive</span>
+            <span className="hidden xl:inline">Quick Incentive</span>
           </Button>
         )}
       </div>

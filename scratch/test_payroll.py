@@ -1,5 +1,6 @@
 import frappe
-from st_automation.api.payroll import create_loan_and_disburse, run_payroll_and_report
+from st_automation.api.payroll import create_loan_and_disburse
+from st_automation.api.payroll_cli import run_payroll_checked
 
 def test_loan():
     print("Testing Loan...")
@@ -26,7 +27,7 @@ def test_loan():
 def test_payroll():
     print("Testing Payroll...")
     try:
-        res = run_payroll_and_report(
+        res = run_payroll_checked(
             company="StandardTouch",
             start_date="2026-08-01",
             end_date="2026-08-31"

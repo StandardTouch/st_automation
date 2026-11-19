@@ -21,6 +21,7 @@ export function ApplicantDetailModal({
   onShortlist,
   onDecision,
   onRefresh,
+  onResumeAttached,
   isActionLoading,
   initialSchedulingOpen = false
 }) {
@@ -120,6 +121,55 @@ export function ApplicantDetailModal({
     }
   };
 
+  // Emails already sent to this candidate (shown so HR can see what went out).
+  const [sentEmails, setSentEmails] = useState([]);
+  const [expandedEmail, setExpandedEmail] = useState(null);
+  const loadEmails = async () => {
+    try {
+      const res = await recruitmentApi.getApplicantEmails(applicant.name);
+      setSentEmails(res.data || []);
+    } catch (err) {
+      console.error('Failed to load emails', err);
+    }
+  };
+  useEffect(() => {
+    if (isOpen && applicant?.name) {
+      setSentEmails([]);
+      setExpandedEmail(null);
+      loadEmails();
+    }
+  }, [isOpen, applicant?.name, applicant?.stage]);
+
+  // Editable rejection email (subject + body), loaded when Reject is chosen.
+  const [rejectEmail, setRejectEmail] = useState({ to: '', subject: '', body: '' });
+  const [isLoadingRejectEmail, setIsLoadingRejectEmail] = useState(false);
+  const [sendRejectEmail, setSendRejectEmail] = useState(true);
+
+  // Resume upload for candidates added without one.
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [resumeError, setResumeError] = useState('');
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/\.(pdf|doc|docx)$/i.test(file.name)) { setResumeError('Only PDF, DOC or DOCX files are allowed.'); return; }
+    if (file.size > 5 * 1024 * 1024) { setResumeError('Resume must be 5MB or smaller.'); return; }
+    setResumeError('');
+    setIsUploadingResume(true);
+    try {
+      const uploaded = await uploadFile(file, { isPrivate: true, doctype: 'Job Applicant', docname: applicant.name });
+      const res = await recruitmentApi.attachResume(applicant.name, uploaded.file_url);
+      addToast(res.message || 'Resume attached.', 'success');
+      // Parent refetches the applicant so the new resume renders from props.
+      onResumeAttached && onResumeAttached(applicant.name);
+      onRefresh && onRefresh();
+    } catch (err) {
+      setResumeError(err.message || 'Failed to upload resume');
+    } finally {
+      setIsUploadingResume(false);
+    }
+  };
+
   const [isOfferLetterOpen, setIsOfferLetterOpen] = useState(false);
   const [offerLetterFile, setOfferLetterFile] = useState(null);
   const [isSendingOffer, setIsSendingOffer] = useState(false);
@@ -130,11 +180,28 @@ export function ApplicantDetailModal({
   const handleTriggerDecision = (type) => {
     setSelectedDecision(type);
     setIsDecisionOpen(true);
+    if (type === 'Reject') {
+      setSendRejectEmail(true);
+      setIsLoadingRejectEmail(true);
+      recruitmentApi.getRejectionEmailPreview(applicant.name)
+        .then((res) => setRejectEmail(res.data || { to: '', subject: '', body: '' }))
+        .catch(() => setRejectEmail({ to: '', subject: '', body: '' }))
+        .finally(() => setIsLoadingRejectEmail(false));
+    }
   };
 
   const confirmDecision = () => {
     if (selectedDecision) {
-      onDecision(applicant.name, selectedDecision, decisionNotes);
+      if (selectedDecision === 'Reject' && sendRejectEmail && (!rejectEmail.subject.trim() || !rejectEmail.body.trim())) {
+        addToast('Rejection email subject and message cannot be empty.', 'error');
+        return;
+      }
+      const isReject = selectedDecision === 'Reject';
+      onDecision(
+        applicant.name, selectedDecision, decisionNotes,
+        isReject && sendRejectEmail ? rejectEmail.subject : undefined,
+        isReject && sendRejectEmail ? rejectEmail.body : undefined,
+      );
       setIsDecisionOpen(false);
       setDecisionNotes('');
     }
@@ -228,10 +295,51 @@ export function ApplicantDetailModal({
             </div>
             <div className="min-w-0">
               <span className="text-[13px] font-semibold text-gray-500 dark:text-slate-400 block">Current Stage</span>
-              <Badge variant="primary">{applicant.stage || applicant.status}</Badge>
+              <Badge variant="primary">{({ Open: 'Applied', Replied: 'Shortlisted' })[applicant.stage || applicant.status] || applicant.stage || applicant.status}</Badge>
             </div>
           </div>
         </div>
+
+        {/* Rejection reason */}
+        {applicant.stage === 'Rejected' && (
+          <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 rounded-2xl p-4">
+            <span className="text-[12px] uppercase font-bold text-rose-700 dark:text-rose-300 block mb-1">Reason for rejection</span>
+            <p className="text-sm text-gray-900 dark:text-slate-50 whitespace-pre-wrap">{applicant.rejection_reason || 'No reason was recorded.'}</p>
+          </div>
+        )}
+
+        {/* Emails sent to candidate */}
+        {sentEmails.length > 0 && (
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-slate-50 flex items-center gap-2 mb-3">
+              <Mail className="h-4 w-4 text-brand-red" />
+              Emails Sent
+            </h3>
+            <div className="space-y-2">
+              {sentEmails.map((em) => (
+                <div key={em.name} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 p-3">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedEmail(expandedEmail === em.name ? null : em.name)}
+                    className="w-full text-left flex items-center justify-between gap-3"
+                  >
+                    <span className="min-w-0">
+                      <span className="text-sm font-bold text-gray-900 dark:text-slate-50 block truncate">{em.subject}</span>
+                      <span className="text-[13px] text-gray-500 dark:text-slate-400 block truncate">To {em.recipients} · {formatDateTime(em.creation)}</span>
+                    </span>
+                    <span className="text-[13px] font-semibold text-brand-red shrink-0">{expandedEmail === em.name ? 'Hide' : 'View'}</span>
+                  </button>
+                  {expandedEmail === em.name && (
+                    <div
+                      className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700 text-sm text-gray-800 dark:text-slate-100 bg-white rounded-lg p-3 overflow-x-auto"
+                      dangerouslySetInnerHTML={{ __html: em.content }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Existing Scheduled Interviews */}
         {scheduledInterviews.length > 0 && (
@@ -446,6 +554,13 @@ export function ApplicantDetailModal({
             <div className="py-12 text-center border border-dashed border-gray-200 dark:border-slate-700 rounded-2xl bg-gray-50 dark:bg-slate-900/40">
               <FileText className="h-8 w-8 text-gray-400 dark:text-slate-500 mx-auto mb-2" />
               <p className="text-sm font-semibold text-gray-500 dark:text-slate-400">No resume attached to this application</p>
+              <label className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-brand-red hover:bg-red-500 text-white cursor-pointer transition-colors">
+                <FileText className="h-4 w-4" />
+                <span>{isUploadingResume ? 'Uploading...' : 'Upload Resume'}</span>
+                <input type="file" accept=".pdf,.doc,.docx" className="hidden" disabled={isUploadingResume} onChange={handleResumeUpload} />
+              </label>
+              <p className="text-xs text-gray-400 mt-2">PDF, DOC, DOCX up to 5MB</p>
+              {resumeError && <p className="mt-2 text-sm text-red-600 font-medium">{resumeError}</p>}
             </div>
           )}
         </div>
@@ -603,7 +718,7 @@ export function ApplicantDetailModal({
       {/* Decision Confirmation Modal */}
       {isDecisionOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-slate-50">
               Confirm Hiring Decision: {selectedDecision}
             </h3>
@@ -611,7 +726,7 @@ export function ApplicantDetailModal({
               {selectedDecision === 'Select' && 'This will mark candidate as Selected and auto-draft a Job Offer.'}
               {selectedDecision === 'Bench' && 'This will move candidate to Talent Pool / Bench and send them a polite "keeping you in mind" email.'}
               {selectedDecision === 'Reconsider' && 'This will move the candidate back into the active pipeline so you can make a fresh Select / Bench / Reject decision for a new role.'}
-              {selectedDecision === 'Reject' && 'This will mark candidate as Rejected and trigger a polite notification email.'}
+              {selectedDecision === 'Reject' && 'This will mark candidate as Rejected. Review or edit the email below before it is sent.'}
             </p>
             {selectedDecision === 'Select' && (
               scheduledInterviews.length === 0 ? (
@@ -637,6 +752,39 @@ export function ApplicantDetailModal({
                 className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-sm text-gray-900 dark:text-slate-50 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
               />
             </div>
+
+            {selectedDecision === 'Reject' && (
+              <div className="space-y-3 border border-gray-200 dark:border-slate-700 rounded-xl p-3 bg-gray-50 dark:bg-slate-900/50">
+                <label className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-slate-200">
+                  <input type="checkbox" checked={sendRejectEmail} onChange={(e) => setSendRejectEmail(e.target.checked)} />
+                  Send rejection email{rejectEmail.to ? ` to ${rejectEmail.to}` : ''}
+                </label>
+                {sendRejectEmail && (isLoadingRejectEmail ? (
+                  <p className="text-sm text-gray-500">Loading email...</p>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-[13px] font-bold text-gray-700 dark:text-slate-200 mb-1">Subject</label>
+                      <input
+                        type="text"
+                        value={rejectEmail.subject}
+                        onChange={(e) => setRejectEmail({ ...rejectEmail, subject: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[13px] font-bold text-gray-700 dark:text-slate-200 mb-1">Message</label>
+                      <textarea
+                        rows={8}
+                        value={rejectEmail.body}
+                        onChange={(e) => setRejectEmail({ ...rejectEmail, body: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-sm text-gray-900 dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                      />
+                    </div>
+                  </>
+                ))}
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button variant="ghost" onClick={() => setIsDecisionOpen(false)}>

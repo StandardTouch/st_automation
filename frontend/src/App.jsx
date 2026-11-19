@@ -59,6 +59,7 @@ export function AppContent() {
   const { addToast } = useToast();
 
   const [activeTab, setActiveTab] = useState(null);
+  const [notFoundHash, setNotFoundHash] = useState(null);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isPublicCandidateMode, setIsPublicCandidateMode] = useState(false);
   const [isInterviewFeedbackMode, setIsInterviewFeedbackMode] = useState(false);
@@ -304,19 +305,29 @@ export function AppContent() {
   const VALID_TABS = [
     'recruitment-pipeline', 'job-openings', 'my-interviews', 'offer-letters',
     'onboarding-pipeline', 'exit-pipeline', 'payroll-command', 'run-payroll',
-    'loans', 'salary-slips', 'staff-feedback', 'my-feedback', 'feedback-analytics',
+    'loans', 'salary-structures', 'salary-slips', 'staff-feedback', 'my-feedback', 'feedback-analytics',
     'templates', 'diagnostics',
   ];
   const hashTab = () => {
     const h = window.location.hash.replace(/^#\/?/, '').split('/')[0];
     return VALID_TABS.includes(h) ? h : null;
   };
+  // A hash whose first segment is not a known page (typo, stale bookmark) used
+  // to be ignored silently. Remember it so a "page not found" notice can show.
+  const unknownHash = () => {
+    const h = window.location.hash.replace(/^#\/?/, '').split('/')[0];
+    if (!h || VALID_TABS.includes(h)) return null;
+    if (['book-slot', 'careers', 'feedback', 'onboarding', 'exit'].some((k) => h.includes(k))) return null;
+    return window.location.hash;
+  };
   useEffect(() => {
     const fromHash = hashTab();
     if (fromHash) setActiveTab((prev) => prev || fromHash);
+    setNotFoundHash(unknownHash());
     const onPop = () => {
       const t = hashTab();
       if (t) setActiveTab(t);
+      setNotFoundHash(unknownHash());
       const tpl = parseTemplateHash();
       setEditingTemplateState({ type: tpl.type, name: tpl.name });
       setTemplateListTab(tpl.listTab);
@@ -336,7 +347,25 @@ export function AppContent() {
     if (activeTab === 'templates') setEditingTemplateState({ type: null, name: null });
   }, [activeTab, isPublicCandidateMode, isInterviewFeedbackMode, isPublicOnboardingMode, isPublicExitMode, isPublicCareersMode]);
 
+  // Which loader group each tab belongs to. The "initial load" effect below
+  // skips the active tab's group because the tab effect already fetches it;
+  // before this, both fired on first load and on every company switch (each
+  // list endpoint was requested twice, the first time with company='').
+  const TAB_GROUPS = {
+    recruitment: ['recruitment-pipeline', 'job-openings', 'my-interviews'],
+    payroll: ['payroll-command', 'run-payroll', 'loans', 'salary-slips'],
+    diagnostics: ['diagnostics'],
+    onboarding: ['onboarding-pipeline'],
+    exit: ['exit-pipeline'],
+    offers: ['offer-letters'],
+  };
+  const activeTabRef = React.useRef(activeTab);
+  activeTabRef.current = activeTab;
+
   useEffect(() => {
+    // Wait for the profile (it carries the default company) so the first
+    // request is already scoped to the right company.
+    if (!userProfile) return;
     if (!isPublicCandidateMode && !isPublicOnboardingMode && !isPublicExitMode) {
       // Tab ids are 'recruitment-pipeline' etc.; the old checks compared
       // against names that never matched, so these views kept showing data
@@ -348,29 +377,36 @@ export function AppContent() {
       if (activeTab === 'exit-pipeline') loadExit();
       if (activeTab === 'offer-letters') loadOfferLetters();
     }
-  }, [activeTab, isPublicCandidateMode, isPublicOnboardingMode, isPublicExitMode, loadRecruitment, loadPayroll, loadDiagnostics, loadOnboarding, loadExit, loadOfferLetters]);
+  }, [userProfile, activeTab, isPublicCandidateMode, isPublicOnboardingMode, isPublicExitMode, loadRecruitment, loadPayroll, loadDiagnostics, loadOnboarding, loadExit, loadOfferLetters]);
 
-  // Initial load
+  // Initial load (and reload of everything on company switch), except the
+  // group the active tab already loads.
+  const hasActiveTab = !!activeTab;
   useEffect(() => {
+    if (!userProfile || !hasActiveTab) return;
     if (!isPublicCandidateMode && !isPublicOnboardingMode && !isPublicExitMode) {
-      loadRecruitment();
-      loadPayroll();
-      loadDiagnostics();
-      loadOnboarding();
-      loadExit();
-      loadOfferLetters();
+      const t = activeTabRef.current;
+      const inTab = (g) => TAB_GROUPS[g].includes(t);
+      if (!inTab('recruitment')) loadRecruitment();
+      if (!inTab('payroll')) loadPayroll();
+      if (!inTab('diagnostics')) loadDiagnostics();
+      if (!inTab('onboarding')) loadOnboarding();
+      if (!inTab('exit')) loadExit();
+      if (!inTab('offers')) loadOfferLetters();
     }
-  }, [isPublicCandidateMode, isPublicOnboardingMode, isPublicExitMode, loadRecruitment, loadPayroll, loadDiagnostics, loadOnboarding, loadExit, loadOfferLetters]);
+  }, [userProfile, hasActiveTab, isPublicCandidateMode, isPublicOnboardingMode, isPublicExitMode, loadRecruitment, loadPayroll, loadDiagnostics, loadOnboarding, loadExit, loadOfferLetters]);
 
   // 1-Click Handlers: Recruitment
   const handleShortlist = async (applicant) => {
     setIsActionLoading(true);
     try {
       const res = await recruitmentApi.shortlistAndNotify(applicant.name);
-      addToast(res.message || 'Candidate shortlisted and booking link generated!', 'success');
+      addToast(res.message || 'Candidate shortlisted.', 'success');
       loadRecruitment();
+      // Keep the profile open and refresh its content in place.
       if (activeApplicant?.name === applicant.name) {
-        setActiveApplicant(null);
+        const fresh = await recruitmentApi.getApplicant(applicant.name);
+        if (fresh.data) setActiveApplicant(fresh.data);
       }
     } catch (err) {
       addToast(err.message || 'Failed to shortlist candidate', 'error');
@@ -379,10 +415,10 @@ export function AppContent() {
     }
   };
 
-  const handleDecision = async (applicantId, decision, notes) => {
+  const handleDecision = async (applicantId, decision, notes, emailSubject, emailBody) => {
     setIsActionLoading(true);
     try {
-      const res = await recruitmentApi.recordDecision(applicantId, decision, notes);
+      const res = await recruitmentApi.recordDecision(applicantId, decision, notes, undefined, undefined, emailSubject, emailBody);
       addToast(res.message || `Decision recorded: ${decision}`, 'success');
       loadRecruitment();
       setActiveApplicant(null);
@@ -450,10 +486,10 @@ export function AppContent() {
     }
   };
 
-  const handleSubmitScorecard = async (interviewId, rating, recommendation, comments, scorecard) => {
+  const handleSubmitScorecard = async (interviewId, rating, recommendation, comments, scorecard, conflictExplanation) => {
     setIsActionLoading(true);
     try {
-      const res = await recruitmentApi.submitFeedback(interviewId, rating, recommendation, comments, scorecard);
+      const res = await recruitmentApi.submitFeedback(interviewId, rating, recommendation, comments, scorecard, conflictExplanation);
       addToast(res.message || 'Interview feedback saved!', 'success');
       setActiveInterviewForFeedback(null);
       loadRecruitment();
@@ -544,9 +580,9 @@ export function AppContent() {
     }
   };
 
-  const handleExecutePayroll = async (comp, sDate, eDate) => {
+  const handleExecutePayroll = async (comp, sDate, eDate, rules = {}) => {
     try {
-      const res = await payrollApi.runPayrollAndReport(comp, sDate, eDate);
+      const res = await payrollApi.runPayrollAndReport(comp, sDate, eDate, undefined, rules.eligibilitySnapshot, rules.acknowledgedExcluded || []);
       addToast(res.message || 'Payroll completed!', 'success');
       loadPayroll();
       return res.data;
@@ -613,6 +649,7 @@ export function AppContent() {
           setSelectedCompany={setSelectedCompany}
           onQuickAddCandidate={() => setIsQuickAddOpen(true)}
           onQuickAddIncentive={() => setIsQuickIncentiveOpen(true)}
+          activeTab={activeTab}
         />
 
         <CommandPalette
@@ -631,6 +668,14 @@ export function AppContent() {
         {/* View Canvas */}
         <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto animate-fade-in">
           <h1 className="sr-only">Standard Touch HR Operations</h1>
+          {notFoundHash && (
+            <div role="alert" data-testid="route-not-found" className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              <span>
+                <strong>Page not found:</strong> <code>{notFoundHash}</code> is not a page in HR Operations. Showing your default page instead.
+              </span>
+              <button type="button" onClick={() => setNotFoundHash(null)} className="shrink-0 font-semibold underline">Dismiss</button>
+            </div>
+          )}
           {/* Recruitment Views */}
           {activeTab === 'recruitment-pipeline' && (
             <KanbanBoard
@@ -753,6 +798,8 @@ export function AppContent() {
               onBulkIncentive={() => setIsBulkIncentiveOpen(true)}
               onNewLoan={() => setIsLoanWizardOpen(true)}
               onViewSalarySlips={() => setActiveTab('salary-slips')}
+              onAssignStructures={() => setActiveTab('salary-structures')}
+              onViewReadiness={() => setActiveTab('diagnostics')}
               recentStructureAssignments={recentStructureAssignments}
             />
           )}
@@ -765,6 +812,10 @@ export function AppContent() {
               onExecutePayroll={handleExecutePayroll}
               onViewSalarySlips={() => setActiveTab('salary-slips')}
               onRefresh={loadPayroll}
+              summary={payrollSummary}
+              setMonth={setMonth}
+              setYear={setYear}
+              onOpenSalaryStructures={() => setActiveTab('salary-structures')}
             />
           )}
 
@@ -828,6 +879,10 @@ export function AppContent() {
         onShortlist={handleShortlist}
         onDecision={handleDecision}
         onRefresh={loadRecruitment}
+        onResumeAttached={async (name) => {
+          const fresh = await recruitmentApi.getApplicant(name);
+          if (fresh.data) setActiveApplicant(fresh.data);
+        }}
         isActionLoading={isActionLoading}
         initialSchedulingOpen={openInSchedulingMode}
       />

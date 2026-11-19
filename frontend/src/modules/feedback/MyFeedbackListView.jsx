@@ -7,7 +7,17 @@ import {
 } from 'lucide-react';
 import { feedbackApi } from '../../api/feedbackApi';
 import { Button } from '../../components/common/Button';
+import { DialogA11y } from '../../components/common/DialogA11y';
 import { FEEDBACK_CATEGORIES } from './FeedbackLandingView';
+
+// Some stored feedback text arrives HTML-entity-escaped (e.g. "&lt;b&gt;"), which
+// React then shows literally. Decode for display only; records are not changed
+// and the result is rendered as text, never as HTML.
+const decodeEntities = (value) => {
+  if (typeof value !== 'string' || !value.includes('&')) return value;
+  const doc = new DOMParser().parseFromString(value, 'text/html');
+  return doc.documentElement.textContent || value;
+};
 
 export function MyFeedbackListView({ onNewFeedback }) {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -108,7 +118,7 @@ export function MyFeedbackListView({ onNewFeedback }) {
             >
               <span>{tab}</span>
               {tab !== 'All' && (
-                <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+                <span className={`px-1.5 py-0.5 rounded-md text-xs ${
                   isActive ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-slate-700 text-brand-grey'
                 }`}>
                   {count}
@@ -142,26 +152,26 @@ export function MyFeedbackListView({ onNewFeedback }) {
                 onClick={() => setSelectedItem(item)}
                 className="group bg-white dark:bg-slate-800 rounded-2xl border border-gray-200/80 dark:border-slate-700/80 p-5 hover:border-brand-red/40 hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               >
-                <div className="flex items-start gap-4 flex-1 min-w-0">
+                <div className="flex items-start gap-4 flex-1 min-w-0 w-full max-w-full">
                   <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/60 flex items-center justify-center text-brand-red shrink-0 group-hover:scale-105 transition-transform">
                     <Icon className="w-6 h-6" />
                   </div>
 
                   <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-base text-brand-black dark:text-slate-100 truncate">
-                        {item.title || item.feedback_type}
+                      <h3 className="font-bold text-base text-brand-black dark:text-slate-100 truncate min-w-0 max-w-full">
+                        {decodeEntities(item.title) || item.feedback_type}
                       </h3>
                       {item.is_anonymous ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
                           <ShieldCheck className="w-3 h-3 text-emerald-600" />
                           Anonymous
                         </span>
                       ) : null}
                     </div>
 
-                    <p className="text-xs text-brand-grey dark:text-slate-400 line-clamp-2">
-                      {item.feedback}
+                    <p className="text-xs text-brand-grey dark:text-slate-400 line-clamp-2 break-words">
+                      {decodeEntities(item.feedback)}
                     </p>
 
                     <div className="flex items-center gap-3 pt-1 text-[11px] text-brand-grey">
@@ -194,15 +204,15 @@ export function MyFeedbackListView({ onNewFeedback }) {
 
       {/* Feedback Detail Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl">
+        <DialogA11y onClose={() => setSelectedItem(null)}><div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div role="dialog" aria-modal="true" aria-label="Feedback details" className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusBadge(selectedItem.status)}`}>
                   {selectedItem.status}
                 </span>
                 <h2 className="text-xl font-bold text-brand-black dark:text-slate-50 mt-2">
-                  {selectedItem.title || selectedItem.feedback_type}
+                  {decodeEntities(selectedItem.title) || selectedItem.feedback_type}
                 </h2>
                 <div className="text-xs text-brand-grey mt-1">
                   Submitted on {selectedItem.date}
@@ -235,7 +245,7 @@ export function MyFeedbackListView({ onNewFeedback }) {
               <div>
                 <div className="text-xs font-bold uppercase text-brand-grey mb-1.5">Feedback Content</div>
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/40 border border-gray-200 dark:border-slate-700/60 text-brand-black dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
-                  {selectedItem.feedback}
+                  {decodeEntities(selectedItem.feedback)}
                 </div>
               </div>
 
@@ -261,7 +271,7 @@ export function MyFeedbackListView({ onNewFeedback }) {
               </Button>
             </div>
           </div>
-        </div>
+        </div></DialogA11y>
       )}
     </div>
   );

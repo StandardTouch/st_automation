@@ -4,9 +4,12 @@ import { useToast } from '../../components/common/Toast';
 import { X, UserPlus, Search, Calendar, Loader2 } from 'lucide-react';
 import { callApi } from '../../api/client';
 import { DateInput } from '../../components/common/DateInput';
+import { useEscapeClose } from '../../components/common/useEscapeClose';
+import { DialogA11y } from '../../components/common/DialogA11y';
 
 export function StartOnboardingModal({ isOpen, onClose, company, onSuccess }) {
   const { addToast } = useToast();
+  useEscapeClose(isOpen, onClose);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [employeeQuery, setEmployeeQuery] = useState('');
   const [employees, setEmployees] = useState([]);
@@ -82,8 +85,8 @@ export function StartOnboardingModal({ isOpen, onClose, company, onSuccess }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+    <DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Start Onboarding" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
@@ -95,7 +98,7 @@ export function StartOnboardingModal({ isOpen, onClose, company, onSuccess }) {
               <p className="text-sm text-slate-500">Create a new onboarding pipeline for an employee</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+          <button onClick={onClose} aria-label="Close" className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
             <X className="h-5 w-5 text-slate-500" />
           </button>
         </div>
@@ -166,7 +169,7 @@ export function StartOnboardingModal({ isOpen, onClose, company, onSuccess }) {
             >
               <option value="">Auto-select for company</option>
               {templates.map(t => (
-                <option key={t.name} value={t.name}>{t.title || t.name} · {t.name}</option>
+                <option key={t.name} value={t.name}>{t.title || t.name}</option>
               ))}
             </select>
           </div>
@@ -206,6 +209,6 @@ export function StartOnboardingModal({ isOpen, onClose, company, onSuccess }) {
           </button>
         </div>
       </div>
-    </div>
+    </div></DialogA11y>
   );
 }

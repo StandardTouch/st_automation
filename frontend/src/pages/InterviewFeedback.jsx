@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, AlertCircle, Loader, Star, Send } from 'lucide-react';
 import { callApi } from '../api/client';
+import { ratingConflict, conflictExplanationError } from '../utils/feedbackRules';
 
 /**
  * Public-facing Interview Feedback page.
@@ -20,6 +21,8 @@ export default function InterviewFeedback() {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [recommendation, setRecommendation] = useState('');
+  const [conflictExplanation, setConflictExplanation] = useState('');
+  const explanationError = conflictExplanationError(rating, recommendation, conflictExplanation);
 
   useEffect(() => {
     if (!token || !interviewName) {
@@ -35,6 +38,10 @@ export default function InterviewFeedback() {
       return;
     }
 
+    if (explanationError) {
+      setStatus('idle');
+      return;
+    }
     setStatus('loading');
     try {
       await callApi('st_automation.api.recruitment.submit_interview_feedback', {
@@ -42,6 +49,7 @@ export default function InterviewFeedback() {
         rating,
         recommendation,
         comments: feedback,
+        conflict_explanation: ratingConflict(rating, recommendation) ? conflictExplanation.trim() : undefined,
         token,
       });
       setStatus('success');
@@ -164,6 +172,15 @@ export default function InterviewFeedback() {
               ))}
             </div>
           </div>
+
+          {ratingConflict(rating, recommendation) && (
+            <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
+              <p>Your star rating ({rating}/5) and recommendation point in different directions. That is allowed, but please explain why.</p>
+              <label htmlFor="conflict-explanation" className="block font-semibold">Why do they differ? *</label>
+              <textarea id="conflict-explanation" rows={2} value={conflictExplanation} onChange={(e) => setConflictExplanation(e.target.value)} aria-invalid={!!explanationError} className="w-full rounded-lg border border-amber-300 bg-white p-2 text-sm text-gray-900" />
+              {explanationError && <p className="text-xs text-rose-700">{explanationError}</p>}
+            </div>
+          )}
 
           {/* Submit */}
           <button

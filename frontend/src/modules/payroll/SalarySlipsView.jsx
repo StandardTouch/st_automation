@@ -87,7 +87,7 @@ export function SalarySlipsView({ slips = [], isLoading, month, year, onRefresh 
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Salary Slips Hub</h2>
+          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Salary Slips</h2>
           <p className="text-sm text-brand-grey">
             Preview branded salary slips, verify net payout calculations, and deliver payslips.
           </p>
@@ -108,7 +108,7 @@ export function SalarySlipsView({ slips = [], isLoading, month, year, onRefresh 
 
       {/* Slips Table Card */}
       <div className="glass-panel rounded-2xl border overflow-hidden">
-        <div className="overflow-x-auto">
+        <div role="region" aria-label="Salary slips table" tabIndex={0} className="overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey font-bold uppercase bg-gray-50 dark:bg-slate-900/60">
@@ -127,6 +127,7 @@ export function SalarySlipsView({ slips = [], isLoading, month, year, onRefresh 
                   <td colSpan={7} className="py-12 text-center text-brand-grey">
                     <FileText className="h-8 w-8 mx-auto mb-2 text-slate-600" />
                     <p className="text-sm font-semibold">No salary slips found for this period</p>
+                    <p className="text-xs mt-1">Slips appear here after payroll is run for the selected month.</p>
                   </td>
                 </tr>
               ) : (

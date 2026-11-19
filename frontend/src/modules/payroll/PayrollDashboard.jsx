@@ -20,6 +20,8 @@ export function PayrollDashboard({
   onBulkIncentive,
   onNewLoan,
   onViewSalarySlips,
+  onAssignStructures,
+  onViewReadiness,
   recentStructureAssignments = []
 }) {
   const months = [
@@ -35,6 +37,29 @@ export function PayrollDashboard({
   const years = [currentYear - 1, currentYear, currentYear + 1];
 
   const readinessScore = summary?.readiness_score || 0;
+  const activeEmployees = summary?.active_employees || 0;
+  const missingCount = summary?.missing_structure_count ?? 0;
+  const assignedCount = summary?.assigned_structure_count || 0;
+  // Backend run_payroll_and_report already rejects a run with zero eligible
+  // employees, so that case disables the button. Partial coverage is allowed
+  // (existing behavior) but is shown as a warning, never as "Ready".
+  const readyState = summary?.is_fully_processed
+    ? 'done'
+    : (!summary || activeEmployees === 0)
+      ? 'unknown'
+      : assignedCount === 0
+        ? 'blocked'
+        : missingCount > 0
+          ? 'partial'
+          : 'ready';
+  const monthName = months.find(m => m.num === month)?.name;
+  const banner = {
+    done: { pill: `Completed for ${monthName} ${year}`, title: 'Payroll Completed for this Period' },
+    unknown: { pill: `${monthName} ${year}`, title: 'Monthly Payroll' },
+    blocked: { pill: 'Action needed', title: "Payroll isn't ready" },
+    partial: { pill: `Partly ready · ${missingCount} need setup`, title: 'Payroll can run for some employees' },
+    ready: { pill: `Ready for ${monthName} ${year}`, title: 'Ready to Run Monthly Payroll?' },
+  }[readyState];
 
   return (
     <div className="space-y-6">
@@ -48,6 +73,7 @@ export function PayrollDashboard({
         {/* Period Selector */}
         <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-1.5 shadow-lg">
           <select
+            aria-label="Payroll month"
             value={month}
             onChange={(e) => setMonth(Number(e.target.value))}
             className="bg-transparent text-sm font-bold text-brand-black dark:text-slate-50 px-2 py-1 focus:outline-none cursor-pointer"
@@ -62,6 +88,7 @@ export function PayrollDashboard({
           <span className="text-slate-600 font-bold">/</span>
 
           <select
+            aria-label="Payroll year"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
             className="bg-transparent text-sm font-bold text-brand-black dark:text-slate-50 px-2 py-1 focus:outline-none cursor-pointer"
@@ -78,30 +105,67 @@ export function PayrollDashboard({
       {/* Main Action Banner: Run Payroll */}
       <div className="glass-panel rounded-3xl p-6 border border-brand-red/30 bg-gradient-to-r from-red-50 via-white to-purple-50 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 z-10 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-50 border border-brand-red/30 text-brand-red text-sm font-bold">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Ready for {months.find(m => m.num === month)?.name} {year}</span>
+          <div
+            data-testid="payroll-readiness-pill"
+            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm font-bold ${
+              readyState === 'ready' || readyState === 'done'
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                : readyState === 'unknown'
+                  ? 'bg-gray-50 border-gray-300 text-gray-700'
+                  : 'bg-amber-50 border-amber-300 text-amber-800'
+            }`}
+          >
+            {readyState === 'ready' || readyState === 'done'
+              ? <ShieldCheck className="h-3.5 w-3.5" />
+              : <AlertTriangle className="h-3.5 w-3.5" />}
+            <span>{banner.pill}</span>
           </div>
           <h3 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">
-            {summary?.is_fully_processed ? 'Payroll Completed for this Period' : 'Ready to Run Monthly Payroll?'}
+            {banner.title}
           </h3>
           <p className="text-sm text-gray-700 dark:text-slate-200">
-            {summary?.is_fully_processed 
-              ? `Generated and submitted ${summary?.processed_slips_count} salary slips. Total payout: ${formatCurrency(summary?.total_net_payout)}.`
-              : 'Our 1-click runner creates salary slips, calculates loan deductions & bonuses, and submits for all active employees.'}
+            {readyState === 'done' && `Generated and submitted ${summary?.processed_slips_count} salary slips. Total payout: ${formatCurrency(summary?.total_net_payout)}.`}
+            {readyState === 'blocked' && `None of the ${activeEmployees} active employees has a salary structure assigned, so payroll cannot run yet.`}
+            {readyState === 'partial' && `${missingCount} of ${activeEmployees} active employees have no salary structure and will be skipped.`}
+            {readyState === 'ready' && 'Our 1-click runner creates salary slips, calculates loan deductions & bonuses, and submits for all active employees.'}
+            {readyState === 'unknown' && (isLoading ? 'Loading payroll readiness…' : 'No active employees found for this company.')}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3 z-10 w-full md:w-auto">
-          <Button
-            size="lg"
-            variant="primary"
-            icon={PlayCircle}
-            onClick={onRunPayroll}
-            className="shadow-glow w-full sm:w-auto"
-          >
-            {summary?.is_fully_processed ? 'Re-Run / Review Payroll' : 'Run Payroll Now'}
-          </Button>
+          {readyState === 'blocked' ? (
+            <Button
+              size="lg"
+              variant="primary"
+              icon={Users}
+              onClick={onAssignStructures}
+              className="shadow-glow w-full sm:w-auto"
+            >
+              Set up salary structures
+            </Button>
+          ) : (
+            <Button
+              size="lg"
+              variant="primary"
+              icon={PlayCircle}
+              onClick={onRunPayroll}
+              disabled={readyState === 'unknown'}
+              className="shadow-glow w-full sm:w-auto"
+            >
+              {readyState === 'done' ? 'Re-Run / Review Payroll' : readyState === 'partial' ? 'Review & Run Payroll' : 'Run Payroll Now'}
+            </Button>
+          )}
+          {(readyState === 'blocked' || readyState === 'partial') && (
+            <Button
+              size="lg"
+              variant="secondary"
+              icon={ShieldCheck}
+              onClick={onViewReadiness}
+              className="w-full sm:w-auto"
+            >
+              View readiness checks
+            </Button>
+          )}
 
           {summary?.processed_slips_count > 0 && (
             <Button

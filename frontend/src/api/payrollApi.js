@@ -42,12 +42,29 @@ export const payrollApi = {
   disburseLoan: (loan_name, disbursement_date) =>
     callApi('st_automation.api.payroll.disburse_loan', { loan_name, disbursement_date }, 'POST'),
   
-  runPayrollAndReport: (company, startDate, endDate, costCenter) => 
+  runPayrollAndReport: (company, startDate, endDate, costCenter, eligibilitySnapshot, acknowledgedExcluded = []) => 
     callApi('st_automation.api.payroll.run_payroll_and_report', {
       company,
       start_date: startDate,
       end_date: endDate,
       cost_center: costCenter,
+      eligibility_snapshot: eligibilitySnapshot,
+      acknowledged_excluded: JSON.stringify(acknowledgedExcluded),
+    }),
+
+  getPayrollEligibility: (company, startDate, endDate) =>
+    callApi('st_automation.api.payroll.get_payroll_eligibility', { company, start_date: startDate, end_date: endDate }, 'GET'),
+
+  getUnassignedEmployees: (company) =>
+    callApi('st_automation.api.payroll.get_unassigned_employees', { company }, 'GET'),
+
+  // dryRun=true never writes. A real write needs dryRun=false AND confirmed=true.
+  bulkAssignSalaryStructure: (company, assignments, dryRun = true, confirmed = false) =>
+    callApi('st_automation.api.payroll.bulk_assign_salary_structure', {
+      company,
+      assignments: JSON.stringify(assignments),
+      dry_run: dryRun ? 1 : 0,
+      confirmed: confirmed ? 1 : 0,
     }),
   
   getSalarySlips: (company, month, year, employee) =>

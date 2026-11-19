@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { DialogA11y } from './DialogA11y';
 
 // Clicking the dark backdrop used to close the modal and wipe whatever the
 // user had typed. Forms now stay open; use the X, Cancel or Escape instead.
 // Pass closeOnBackdrop for simple read-only dialogs.
 export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth = 'max-w-2xl', closeOnBackdrop = false }) {
+  const titleId = useId();
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) onClose();
@@ -33,12 +35,15 @@ export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth = '
       {/* Modal Container */}
       <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-6">
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
           className={`w-full ${maxWidth} max-h-[85vh] flex flex-col transform rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-left align-middle shadow-2xl transition-all animate-fade-in`}
         >
           {/* Header */}
           <div className="flex items-start justify-between p-6 pb-4 border-b border-gray-200 dark:border-slate-700/80 shrink-0">
             <div>
-              <h3 className="text-xl font-bold text-brand-black dark:text-slate-50 tracking-tight">{title}</h3>
+              <h3 id={titleId} className="text-xl font-bold text-brand-black dark:text-slate-50 tracking-tight">{title}</h3>
               {subtitle && <p className="mt-1 text-sm text-brand-grey">{subtitle}</p>}
             </div>
             <button
@@ -59,5 +64,5 @@ export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth = '
     </div>
   );
 
-  return createPortal(modalContent, document.body);
+  return createPortal(<DialogA11y closeOnEscape={false}>{modalContent}</DialogA11y>, document.body);
 }

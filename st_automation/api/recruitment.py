@@ -133,7 +133,27 @@ def get_pipeline(job_opening=None, search=None, company=None):
 			"Rejected": []
 		}
 
+		# Rejection reasons live in the "Hiring Decision: REJECTED" comment.
+		rejected_ids = [a.name for a in applicants if (a.get("status") or "") == "Rejected"]
+		rejection_reasons = {}
+		if rejected_ids:
+			for c in frappe.get_all(
+				"Comment",
+				filters={
+					"reference_doctype": "Job Applicant",
+					"reference_name": ["in", rejected_ids],
+					"comment_type": "Comment",
+					"content": ["like", "%Hiring Decision: REJECTED%"],
+				},
+				fields=["reference_name", "content"],
+				order_by="creation asc",
+			):
+				text = frappe.utils.strip_html(c.content or "")
+				reason = text.split("Reason:", 1)[1].strip() if "Reason:" in text else ""
+				rejection_reasons[c.reference_name] = reason
+
 		for app in applicants:
+			app["rejection_reason"] = rejection_reasons.get(app.name, "")
 			raw_status = (app.get("status") or "Open").strip()
 			booking_token = app.get("booking_token")
 			talent_pool = app.get("talent_pool_tag")
@@ -164,6 +184,108 @@ def get_pipeline(job_opening=None, search=None, company=None):
 		return error_response("Error loading recruitment pipeline", e)
 
 
+def _recent_applicant_emails(applicant_id, within_seconds=None, limit=20):
+	"""Emails (Communication records) linked to a Job Applicant, newest first."""
+	filters = {
+		"reference_doctype": "Job Applicant",
+		"reference_name": applicant_id,
+		"communication_type": "Communication",
+		"communication_medium": "Email",
+	}
+	if within_seconds:
+		filters["creation"] = [">=", add_to_date(now_datetime(), seconds=-within_seconds)]
+	rows = frappe.get_all(
+		"Communication",
+		filters=filters,
+		fields=["name", "subject", "recipients", "content", "creation", "delivery_status", "sent_or_received"],
+		order_by="creation desc",
+		limit=limit,
+	)
+	return [r for r in rows if r.get("sent_or_received") in (None, "Sent")]
+
+
+@frappe.whitelist()
+def get_applicant_emails(applicant_id):
+	"""Emails sent to a candidate, for the 'Emails Sent' section of the profile."""
+	try:
+		if not frappe.db.exists("Job Applicant", applicant_id):
+			return error_response("Candidate not found.")
+		return success_response(_recent_applicant_emails(applicant_id))
+	except Exception as e:
+		return error_response("Error loading candidate emails", e)
+
+
+def _rejection_email_text(applicant_name, job_title):
+	"""Default plain-text body of the rejection email (editable from the UI)."""
+	role = job_title or "Position"
+	return (
+		f"Dear {applicant_name},\n\n"
+		f"Thank you for taking the time to speak with us regarding the {role} role at Standard Touch.\n\n"
+		"While we were impressed with your background, we have decided to move forward with another candidate who more closely matches our immediate technical needs for this role.\n\n"
+		"We will keep your profile in our talent network for upcoming opportunities that align with your experience.\n\n"
+		"We wish you all the best in your career search!"
+	)
+
+
+def _rejection_email_html(body_text):
+	paragraphs = "".join(
+		f"<p>{frappe.utils.escape_html(p.strip()).replace(chr(10), '<br>')}</p>"
+		for p in (body_text or "").split("\n\n") if p.strip()
+	)
+	return (
+		'<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">'
+		f"{paragraphs}"
+		'<hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />'
+		'<p style="font-size: 12px; color: #94a3b8;">Standard Touch Recruitment Team</p>'
+		"</div>"
+	)
+
+
+@frappe.whitelist()
+def get_rejection_email_preview(applicant_id):
+	"""Default rejection email subject/body so HR can edit it before rejecting."""
+	try:
+		if not frappe.db.exists("Job Applicant", applicant_id):
+			return error_response("Candidate not found.")
+		doc = frappe.get_doc("Job Applicant", applicant_id)
+		job_label = (frappe.db.get_value("Job Opening", doc.job_title, "job_title") if doc.job_title else None) or doc.job_title
+		return success_response({
+			"to": doc.email_id,
+			"subject": f"Update regarding your application for {job_label or 'Position'} — Standard Touch",
+			"body": _rejection_email_text(doc.applicant_name, job_label),
+		})
+	except Exception as e:
+		return error_response("Error building rejection email preview", e)
+
+
+@frappe.whitelist()
+def attach_resume(applicant_id, resume_attachment):
+	"""Attach (or replace) the resume of an existing candidate."""
+	try:
+		if not frappe.db.exists("Job Applicant", applicant_id):
+			return error_response("Candidate not found.")
+		if not set(frappe.get_roles()) & {"System Manager", "HR Manager", "HR User"}:
+			return error_response("You do not have permission to attach resumes.")
+		if not resume_attachment or not str(resume_attachment).startswith(("/files/", "/private/files/")):
+			return error_response("Invalid resume file reference.")
+		frappe.db.set_value("Job Applicant", applicant_id, "resume_attachment", resume_attachment)
+		frappe.db.commit()
+		return success_response({"resume_attachment": resume_attachment}, message="Resume attached.")
+	except Exception as e:
+		return error_response("Error attaching resume", e)
+
+
+def _normalize_phone(phone):
+	"""Return a 10-digit phone string, '' if empty, or None if invalid."""
+	raw = (phone or "").strip()
+	if not raw:
+		return ""
+	digits = "".join(ch for ch in raw if ch.isdigit())
+	if len(digits) == 12 and digits.startswith("91") and raw.startswith("+"):
+		digits = digits[2:]
+	return digits if len(digits) == 10 else None
+
+
 @frappe.whitelist()
 def shortlist_and_notify(applicant_id, notes=None):
 	"""
@@ -184,11 +306,21 @@ def shortlist_and_notify(applicant_id, notes=None):
 		doc.save(ignore_permissions=True)
 		frappe.db.commit()
 
+		# Report any email the system queued/sent for this candidate in this
+		# action, so the UI can acknowledge it and show its content.
+		emails = _recent_applicant_emails(applicant_id, within_seconds=120)
+		message = "Candidate shortlisted successfully!"
+		if emails:
+			message += f" Email sent to {emails[0]['recipients']}."
+		else:
+			message += " No email was sent."
+
 		return success_response({
 			"applicant_id": applicant_id,
 			"status": "Replied",
-			"email_sent": False
-		}, message="Candidate shortlisted successfully!")
+			"email_sent": bool(emails),
+			"emails": emails
+		}, message=message)
 	except Exception as e:
 		return error_response(f"Error shortlisting candidate: {str(e)}", e)
 
@@ -635,6 +767,15 @@ def get_applicant_details(applicant_id):
 			"interview_rating_summary": doc.interview_rating_summary,
 			"booked_slot_time": doc.booked_slot_time,
 		}
+		if doc.status == "Rejected":
+			for c in frappe.get_all(
+				"Comment",
+				filters={"reference_doctype": "Job Applicant", "reference_name": doc.name, "comment_type": "Comment",
+					"content": ["like", "%Hiring Decision: REJECTED%"]},
+				fields=["content"], order_by="creation desc", limit=1,
+			):
+				text = frappe.utils.strip_html(c.content or "")
+				applicant["rejection_reason"] = text.split("Reason:", 1)[1].strip() if "Reason:" in text else ""
 
 		if doc.email_id:
 			emp_name = frappe.db.get_value("Employee", {"personal_email": doc.email_id}, "name")
@@ -897,8 +1038,25 @@ def get_my_interviews():
 		return error_response("Error loading interviews", e)
 
 
+_POSITIVE_RECOMMENDATIONS = ("Strong Hire", "Strongly Recommend")
+_NEGATIVE_RECOMMENDATIONS = ("Fail", "Do Not Recommend")
+_MIN_CONFLICT_EXPLANATION = 15
+
+
+def _rating_recommendation_conflict(rating, recommendation):
+	"""True when a score and the hiring recommendation point in opposite directions.
+
+	Conflicting feedback is still accepted (the reviewer may have a real reason),
+	but a written explanation is then required. Historical records are never
+	re-evaluated or modified by this rule.
+	"""
+	return (recommendation in _POSITIVE_RECOMMENDATIONS and rating <= 2) or (
+		recommendation in _NEGATIVE_RECOMMENDATIONS and rating >= 4
+	)
+
+
 @frappe.whitelist(allow_guest=True)
-def submit_interview_feedback(interview_id, rating, recommendation, comments, scorecard=None, token=None):
+def submit_interview_feedback(interview_id, rating, recommendation, comments, scorecard=None, token=None, conflict_explanation=None):
 	"""
 	Submits structured interview feedback and moves candidate to 'Interview Completed'.
 
@@ -932,6 +1090,15 @@ def submit_interview_feedback(interview_id, rating, recommendation, comments, sc
 			return error_response("Please add a short comment explaining your rating.")
 		if len(comments) > 2000:
 			return error_response("Comments are too long (maximum 2000 characters).")
+		conflict_explanation = (conflict_explanation or "").strip()
+		has_conflict = _rating_recommendation_conflict(rating, recommendation)
+		if has_conflict and len(conflict_explanation) < _MIN_CONFLICT_EXPLANATION:
+			return error_response(
+				f"Your rating ({rating}/5) and recommendation ({recommendation}) disagree. "
+				f"Please explain why (at least {_MIN_CONFLICT_EXPLANATION} characters)."
+			)
+		if len(conflict_explanation) > 1000:
+			return error_response("The explanation is too long (maximum 1000 characters).")
 
 		if token:
 			# Guest path: the token must match one of the per-interviewer
@@ -972,6 +1139,8 @@ def submit_interview_feedback(interview_id, rating, recommendation, comments, sc
 			app_doc.status = "Replied"
 			submitter = matched_employee if token else frappe.session.user
 			summary = f"[{submitter}] Rating: {rating}/5 | Rec: {recommendation} | Notes: {comments}"
+			if has_conflict:
+				summary += f" | Conflict explained: {conflict_explanation}"
 			# `interview_rating_summary` is a Data field capped at 140 chars —
 			# any candidate feedback with a moderately detailed comment blew
 			# past that and threw a validation error on save (surfaced to the
@@ -984,7 +1153,7 @@ def submit_interview_feedback(interview_id, rating, recommendation, comments, sc
 
 		# Add a comment directly to the Interview document so we can retrieve it
 		submitter_name = matched_employee if token else frappe.session.user
-		interview.add_comment("Comment", f"Feedback from {submitter_name}: Rating {rating}/5 | {recommendation} | {comments}")
+		interview.add_comment("Comment", f"Feedback from {submitter_name}: Rating {rating}/5 | {recommendation} | {comments}" + (f" | Conflict explained: {conflict_explanation}" if has_conflict else ""))
 
 		frappe.db.commit()
 		return success_response(message="Feedback submitted successfully!")
@@ -1050,7 +1219,7 @@ def _resolve_department(department, company):
 
 
 @frappe.whitelist()
-def record_decision(applicant_id, decision, notes=None, salary_offered=None, designation=None):
+def record_decision(applicant_id, decision, notes=None, salary_offered=None, designation=None, email_subject=None, email_body=None):
 	"""
 	1-Click Decision Engine:
 	- Select: moves to Selected, creates draft Job Offer
@@ -1062,6 +1231,7 @@ def record_decision(applicant_id, decision, notes=None, salary_offered=None, des
 			return error_response(f"Applicant {applicant_id} does not exist.")
 
 		doc = frappe.get_doc("Job Applicant", applicant_id)
+		email_info = None
 
 		if decision == "Select":
 			doc.status = "Accepted"
@@ -1170,32 +1340,44 @@ def record_decision(applicant_id, decision, notes=None, salary_offered=None, des
 			doc.add_comment("Comment", f"Hiring Decision: REJECTED. Reason: {notes or 'Not specified'}")
 			doc.save(ignore_permissions=True)
 
-			# Send polite rejection email
-			if doc.email_id:
+			# Send rejection email (subject/body editable from the UI)
+			if doc.email_id and email_body is not None:
 				try:
-					subject = f"Update regarding your application for {doc.job_title or 'Position'} — Standard Touch"
-					email_body = f"""
-					<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
-						<p>Dear {doc.applicant_name},</p>
-						<p>Thank you for taking the time to speak with us regarding the <strong>{doc.job_title or 'Position'}</strong> role at Standard Touch.</p>
-						<p>While we were impressed with your background, we have decided to move forward with another candidate who more closely matches our immediate technical needs for this role.</p>
-						<p>We will keep your profile in our talent network for upcoming opportunities that align with your experience.</p>
-						<p>We wish you all the best in your career search!</p>
-						<hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-						<p style="font-size: 12px; color: #94a3b8;">Standard Touch Recruitment Team</p>
-					</div>
-					"""
+					job_label = (frappe.db.get_value("Job Opening", doc.job_title, "job_title") if doc.job_title else None) or doc.job_title
+					subject = (email_subject or "").strip() or f"Update regarding your application for {job_label or 'Position'} — Standard Touch"
+					body_text = (email_body or "").strip() or _rejection_email_text(doc.applicant_name, job_label)
 					frappe.sendmail(
 						recipients=[doc.email_id],
 						cc=get_hr_manager_emails(),
 						subject=subject,
-						message=email_body,
+						message=_rejection_email_html(body_text),
+						reference_doctype="Job Applicant",
+						reference_name=doc.name,
 						now=True
 					)
+					email_info = {"to": doc.email_id, "subject": subject, "body": body_text}
+					# sendmail only queues the mail; log a Communication so the
+					# candidate profile can show what was sent.
+					try:
+						frappe.get_doc({
+							"doctype": "Communication",
+							"communication_type": "Communication",
+							"communication_medium": "Email",
+							"sent_or_received": "Sent",
+							"subject": subject,
+							"content": _rejection_email_html(body_text),
+							"recipients": doc.email_id,
+							"reference_doctype": "Job Applicant",
+							"reference_name": doc.name,
+							"status": "Linked",
+							"delivery_status": "Sent",
+						}).insert(ignore_permissions=True)
+					except Exception as log_err:
+						frappe.log_error(title="st_automation Email Log", message=str(log_err))
 				except Exception as mail_err:
 					frappe.log_error(title="st_automation Rejection Email", message=f"Rejection email note: {mail_err}")
 
-			message = f"{doc.applicant_name} marked as REJECTED and polite notification sent."
+			message = f"{doc.applicant_name} marked as REJECTED." + (f" Rejection email sent to {doc.email_id}." if email_info else " No rejection email was sent.")
 
 		else:
 			return error_response(f"Invalid decision type: {decision}")
@@ -1204,7 +1386,8 @@ def record_decision(applicant_id, decision, notes=None, salary_offered=None, des
 		return success_response({
 			"applicant_id": applicant_id,
 			"decision": decision,
-			"status": doc.status
+			"status": doc.status,
+			"email": email_info
 		}, message=message)
 	except Exception as e:
 		return error_response(f"Error recording decision: {str(e)}", e)
@@ -1226,6 +1409,9 @@ def quick_add_applicant(applicant_name, email_id, phone_number=None, job_title=N
 		email_id = email_id.strip()
 		if len(applicant_name) > 140:
 			return error_response("Name is too long (maximum 140 characters).")
+		phone_number = _normalize_phone(phone_number)
+		if phone_number is None:
+			return error_response("Phone number must be exactly 10 digits.")
 		existing = frappe.db.get_value("Job Applicant", {"email_id": email_id}, ["name", "status"], as_dict=True)
 		if existing:
 			return error_response(f"A candidate with the email {email_id} already exists in the pipeline (status: {existing.status}).")

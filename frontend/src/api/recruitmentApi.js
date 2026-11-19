@@ -18,23 +18,35 @@ export const recruitmentApi = {
   getMyInterviews: () => 
     callApi('st_automation.api.recruitment.get_my_interviews', {}, 'GET'),
   
-  submitFeedback: (interviewId, rating, recommendation, comments, scorecard) => 
+  submitFeedback: (interviewId, rating, recommendation, comments, scorecard, conflictExplanation) => 
     callApi('st_automation.api.recruitment.submit_interview_feedback', {
       interview_id: interviewId,
       rating,
       recommendation,
       comments,
-      scorecard
+      scorecard,
+      conflict_explanation: conflictExplanation || undefined,
     }),
   
-  recordDecision: (applicantId, decision, notes, salaryOffered, designation) => 
+  recordDecision: (applicantId, decision, notes, salaryOffered, designation, emailSubject, emailBody) => 
     callApi('st_automation.api.recruitment.record_decision', {
       applicant_id: applicantId,
       decision,
       notes,
       salary_offered: salaryOffered,
-      designation
+      designation,
+      email_subject: emailSubject,
+      email_body: emailBody
     }),
+
+  getRejectionEmailPreview: (applicantId) =>
+    callApi('st_automation.api.recruitment.get_rejection_email_preview', { applicant_id: applicantId }, 'GET'),
+
+  attachResume: (applicantId, resumeAttachment) =>
+    callApi('st_automation.api.recruitment.attach_resume', { applicant_id: applicantId, resume_attachment: resumeAttachment }),
+
+  getApplicantEmails: (applicantId) =>
+    callApi('st_automation.api.recruitment.get_applicant_emails', { applicant_id: applicantId }, 'GET'),
   
   quickAddApplicant: (data) => 
     callApi('st_automation.api.recruitment.quick_add_applicant', data),

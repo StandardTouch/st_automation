@@ -6,12 +6,13 @@ import { callApi } from '../../api/client';
 import { useToast } from '../../components/common/Toast';
 import { DateInput } from '../../components/common/DateInput';
 
-export function AssignSalaryStructureModal({ isOpen, onClose, company, employee, onSuccess }) {
+export function AssignSalaryStructureModal({ isOpen, onClose, company, employee, onSuccess, onCreateStructure }) {
   const { addToast } = useToast();
   const [structures, setStructures] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   
   // Default to 1st of the current month
   const firstDay = new Date();
@@ -54,6 +55,7 @@ export function AssignSalaryStructureModal({ isOpen, onClose, company, employee,
       console.error('Failed to load modal data', err);
     } finally {
       setIsLoadingData(false);
+      setHasLoaded(true);
     }
   };
 
@@ -108,6 +110,17 @@ export function AssignSalaryStructureModal({ isOpen, onClose, company, employee,
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {hasLoaded && !isLoadingData && structures.length === 0 && (
+          <div role="alert" data-testid="assign-no-structures" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
+            <p className="font-semibold">No salary structure exists yet. Create one first, then assign it.</p>
+            {onCreateStructure ? (
+              <Button type="button" size="sm" variant="primary" onClick={onCreateStructure}>Create a salary structure</Button>
+            ) : (
+              <p>Open <strong>Salary Structures</strong> in the sidebar and choose <strong>New Structure</strong>.</p>
+            )}
           </div>
         )}
 
@@ -172,6 +185,7 @@ export function AssignSalaryStructureModal({ isOpen, onClose, company, employee,
             variant="primary"
             icon={Save}
             isLoading={loading}
+            disabled={hasLoaded && structures.length === 0}
           >
             Assign Structure
           </Button>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { DialogA11y } from '../../components/common/DialogA11y';
 import { X, FileText, CheckCircle2, Mail, Loader2, AlertCircle, Download } from 'lucide-react';
 import { exitApi } from '../../api/exitApi';
 
@@ -57,8 +58,9 @@ export default function ExitDocumentModal({ isOpen, onClose, separation, taskNam
   if (!isOpen) return null;
 
   return (
+    <DialogA11y onClose={onClose}>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div role="dialog" aria-modal="true" aria-label="Exit documents" className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
@@ -214,5 +216,6 @@ export default function ExitDocumentModal({ isOpen, onClose, separation, taskNam
         </div>
       </div>
     </div>
+    </DialogA11y>
   );
 }

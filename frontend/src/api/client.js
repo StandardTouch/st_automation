@@ -2,7 +2,7 @@
  * Unified Frappe API Client for Standard Touch HR Ops
  */
 
-function getCsrfToken() {
+export function getCsrfToken() {
   if (typeof window !== 'undefined') {
     if (window.ST_BOOT?.csrf_token) return window.ST_BOOT.csrf_token;
     if (window.frappe?.csrf_token) return window.frappe.csrf_token;

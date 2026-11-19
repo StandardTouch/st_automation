@@ -1,3 +1,4 @@
+import { DialogA11y } from '../../components/common/DialogA11y';
 import React, { useState } from 'react';
 import { exitApi } from '../../api/exitApi';
 import { useToast } from '../../components/common/Toast';
@@ -384,8 +385,8 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
 
       {/* Mark as Left Confirmation Dialog */}
       {markLeftDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setMarkLeftDialog(null)}>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <DialogA11y onClose={() => setMarkLeftDialog(null)}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setMarkLeftDialog(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Mark employee as left" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-6 text-center">
               <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <LogOut className="h-7 w-7 text-amber-600" />
@@ -421,7 +422,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
               </div>
             </div>
           </div>
-        </div>
+        </div></DialogA11y>
       )}
 
       {/* Document Generator Modal */}

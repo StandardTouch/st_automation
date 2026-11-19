@@ -144,6 +144,7 @@ export function FeedbackFormView({
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
                     onClick={() => setRating(star)}
+                    aria-label={`${star} star${star > 1 ? 's' : ''}`}
                     className="p-1 text-2xl transition-transform hover:scale-125 focus:outline-none"
                   >
                     <Star

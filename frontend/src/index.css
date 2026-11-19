@@ -84,3 +84,20 @@
 .animate-fade-in {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Accessibility (WCAG 1.4.3): in the light theme the muted-grey and small red text
+   tokens fall below 4.5:1 on white. Darker text-only overrides; dark theme and
+   filled brand-red buttons are unchanged. */
+@media (prefers-color-scheme: light) {
+  .text-brand-grey { color: #5c5d60; }
+  .text-brand-red { color: #c4161c; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .text-brand-grey { color: #a3a4a7; }
+  .text-brand-red { color: #ff5c61; }
+}
+
+/* White text on the brand red (#ED1D24) is 4.37:1; this 4.98:1 shade passes WCAG AA
+   for normal text. Design decision: slightly darker filled red (needs sign-off). */
+.bg-brand-red { background-color: #dc1a21; }
