@@ -6,6 +6,9 @@ from frappe.utils import (
 import json
 from datetime import datetime, timedelta
 from frappe.rate_limiter import rate_limit
+from st_automation.api.pipeline_stage import (
+	derive_stage, comm_state, interview_feedback_needed, ALL_STAGE_IDS
+)
 from st_automation.api.utils import (
 	success_response, error_response, generate_secure_token,
 	get_site_booking_url, ensure_custom_fields_exist, safe_int,
@@ -67,7 +70,13 @@ def get_pipeline(job_opening=None, search=None, company=None):
 		# company selector in the topbar was previously wired to state but
 		# never actually passed to this call, so switching companies never
 		# changed anything shown here.
-		empty_stages = {"stages": {"Open": [], "Replied": [], "Accepted": [], "Hold": [], "Rejected": []}}
+		empty_stages = {
+			"stages": {"Open": [], "Replied": [], "Accepted": [], "Hold": [], "Rejected": []},
+			"board": {sid: [] for sid in ALL_STAGE_IDS},
+			"counts": {sid: 0 for sid in ALL_STAGE_IDS},
+			"truncated": False,
+			"limit": PIPELINE_LIMIT,
+		}
 		if company:
 			company_job_titles = frappe.get_all(
 				"Job Opening", filters={"company": company}, pluck="name"
@@ -99,8 +108,11 @@ def get_pipeline(job_opening=None, search=None, company=None):
 			filters=filters,
 			or_filters=or_filters,
 			order_by="creation desc",
-			limit=300
+			limit=PIPELINE_LIMIT + 1
 		)
+		# Never drop candidates silently: report when the board is capped.
+		truncated = len(applicants) > PIPELINE_LIMIT
+		applicants = applicants[:PIPELINE_LIMIT]
 
 		# Human-readable job title (job_title holds the Job Opening ID).
 		_titles = {j.name: j.job_title for j in frappe.get_all("Job Opening", fields=["name", "job_title"])}
@@ -152,6 +164,10 @@ def get_pipeline(job_opening=None, search=None, company=None):
 				reason = text.split("Reason:", 1)[1].strip() if "Reason:" in text else ""
 				rejection_reasons[c.reference_name] = reason
 
+		facts = _pipeline_facts(applicants)
+		board = {sid: [] for sid in ALL_STAGE_IDS}
+		now_dt = now_datetime()
+
 		for app in applicants:
 			app["rejection_reason"] = rejection_reasons.get(app.name, "")
 			raw_status = (app.get("status") or "Open").strip()
@@ -173,15 +189,147 @@ def get_pipeline(job_opening=None, search=None, company=None):
 				target_stage = "Open"
 
 			app["stage"] = target_stage
-			app["employee"] = employee_by_email.get(app.get("email_id"))
+			f = facts.get(app.name) or {}
+			app["employee"] = f.get("employee") or employee_by_email.get(app.get("email_id"))
 			stages[target_stage].append(app)
+
+			# New Kanban stage, derived from the real records (see pipeline_stage.py).
+			expiry = app.get("booking_token_expiry")
+			pstage, badges = derive_stage({
+				"status": raw_status,
+				"talent_pool_tag": talent_pool,
+				"employee": app["employee"],
+				"offer": f.get("offer"),
+				"selected_decision": f.get("selected_decision"),
+				"interviews": f.get("interviews") or [],
+				"booking_token": booking_token,
+				"token_expired": bool(expiry and get_datetime(expiry) < now_dt),
+				"now": now_dt,
+			})
+			app["pipeline_stage"] = pstage
+			app["pipeline_badges"] = [{"label": l, "tone": t} for l, t in badges]
+			app["offer"] = f.get("offer")
+			ivs = f.get("interviews") or []
+			need = sum(interview_feedback_needed(i.get("assigned")) for i in ivs)
+			have = sum(min(i.get("feedback") or 0, interview_feedback_needed(i.get("assigned"))) for i in ivs)
+			upcoming = [i["when"] for i in ivs if i.get("when")]
+			app["interview_summary"] = {
+				"count": len(ivs),
+				"feedback_have": have,
+				"feedback_need": need,
+				"next_time": str(min(upcoming)) if upcoming else None,
+			}
+			board[pstage].append(app)
 
 		return success_response({
 			"stages": stages,
+			"board": board,
+			"counts": {sid: len(items) for sid, items in board.items()},
+			"truncated": truncated,
+			"limit": PIPELINE_LIMIT,
 			"total_count": len(applicants)
 		})
 	except Exception as e:
 		return error_response("Error loading recruitment pipeline", e)
+
+
+PIPELINE_LIMIT = 1000
+
+
+def _pipeline_facts(applicants):
+	"""Batch-load the records that decide each candidate's Kanban stage.
+
+	Returns {applicant_name: {"interviews": [...], "offer": {...}|None,
+	"employee": str|None, "selected_decision": bool}}. Uses a handful of queries for
+	the whole board (no per-candidate queries).
+	"""
+	names = [a.name for a in applicants]
+	facts = {n: {"interviews": [], "offer": None, "employee": None, "selected_decision": False} for n in names}
+	if not names:
+		return facts
+
+	# Interviews (non-cancelled), assigned interviewers, and feedback actually given.
+	ivs = frappe.get_all(
+		"Interview",
+		filters={"job_applicant": ["in", names], "docstatus": ["!=", 2]},
+		fields=["name", "job_applicant", "scheduled_on", "from_time"],
+	)
+	iv_names = [i.name for i in ivs]
+	assigned, feedback = {}, {}
+	if iv_names:
+		for d in frappe.get_all("Interview Detail", filters={"parent": ["in", iv_names]}, fields=["parent"]):
+			assigned[d.parent] = assigned.get(d.parent, 0) + 1
+		for c in frappe.get_all(
+			"Comment",
+			filters={"reference_doctype": "Interview", "reference_name": ["in", iv_names], "comment_type": "Comment", "content": ["like", "Feedback from %"]},
+			fields=["reference_name"],
+		):
+			feedback[c.reference_name] = feedback.get(c.reference_name, 0) + 1
+		for r in frappe.get_all("Interview Feedback", filters={"interview": ["in", iv_names], "docstatus": ["!=", 2]}, fields=["interview"]):
+			feedback[r.interview] = feedback.get(r.interview, 0) + 1
+	for i in ivs:
+		when = None
+		if i.scheduled_on:
+			ft = i.from_time
+			if isinstance(ft, timedelta):
+				ft = (datetime.min + ft).time()
+			when = datetime.combine(getdate(i.scheduled_on), ft) if ft else datetime.combine(getdate(i.scheduled_on), datetime.min.time())
+		facts[i.job_applicant]["interviews"].append({
+			"name": i.name,
+			"assigned": assigned.get(i.name, 0),
+			"feedback": feedback.get(i.name, 0),
+			"when": when,
+		})
+
+	# Job offers and the verified state of the email to the candidate (Email Queue Recipient).
+	email_of = {a.name: (a.get("email_id") or "").strip().lower() for a in applicants}
+	offers = frappe.get_all(
+		"Job Offer",
+		filters={"job_applicant": ["in", names], "docstatus": ["!=", 2]},
+		fields=["name", "job_applicant", "status", "applicant_email", "creation"],
+		order_by="creation asc",
+	)
+	offer_by_name = {}
+	for o in offers:
+		offer_by_name[o.name] = o
+		facts[o.job_applicant]["offer"] = {
+			"name": o.name,
+			"status": o.status,
+			"comm_state": "none",
+			"sent_to": None,
+		}
+	if offer_by_name:
+		rows = frappe.db.sql(
+			"""select q.reference_name as offer, r.recipient, r.status
+			from `tabEmail Queue` q join `tabEmail Queue Recipient` r on r.parent = q.name
+			where q.reference_doctype = 'Job Offer' and q.reference_name in %(offers)s""",
+			{"offers": list(offer_by_name)}, as_dict=True,
+		)
+		per_offer = {}
+		for r in rows:
+			o = offer_by_name[r.offer]
+			cand = (o.get("applicant_email") or email_of.get(o.job_applicant) or "").strip().lower()
+			if (r.recipient or "").strip().lower() == cand:
+				per_offer.setdefault(r.offer, []).append(r.status)
+		for oname, statuses in per_offer.items():
+			o = offer_by_name[oname]
+			st = comm_state(statuses)
+			facts[o.job_applicant]["offer"]["comm_state"] = st
+			if st == "sent":
+				facts[o.job_applicant]["offer"]["sent_to"] = o.get("applicant_email") or email_of.get(o.job_applicant)
+
+	# Employees created from this applicant (Employee.job_applicant is the source of truth).
+	for e in frappe.get_all("Employee", filters={"job_applicant": ["in", names]}, fields=["name", "job_applicant"]):
+		facts[e.job_applicant]["employee"] = e.name
+
+	# Explicit "Selected" decisions recorded as comments (legacy source until a decision field exists).
+	for c in frappe.get_all(
+		"Comment",
+		filters={"reference_doctype": "Job Applicant", "reference_name": ["in", names], "comment_type": "Comment", "content": ["like", "%Hiring Decision: SELECTED%"]},
+		fields=["reference_name"],
+	):
+		facts[c.reference_name]["selected_decision"] = True
+	return facts
 
 
 def _recent_applicant_emails(applicant_id, within_seconds=None, limit=20):

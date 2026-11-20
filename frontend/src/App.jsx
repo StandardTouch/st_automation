@@ -117,6 +117,7 @@ export function AppContent() {
   const [isStartSeparationOpen, setIsStartSeparationOpen] = useState(false);
   const [activeInterviewForFeedback, setActiveInterviewForFeedback] = useState(null);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [drawerReloadKey, setDrawerReloadKey] = useState(0);
 
   // Template State
   // Template editor state lives in the URL hash so a refresh stays on the same
@@ -492,6 +493,7 @@ export function AppContent() {
       const res = await recruitmentApi.submitFeedback(interviewId, rating, recommendation, comments, scorecard, conflictExplanation);
       addToast(res.message || 'Interview feedback saved!', 'success');
       setActiveInterviewForFeedback(null);
+      setDrawerReloadKey((k) => k + 1); // refresh an open candidate drawer so it shows the new feedback
       loadRecruitment();
     } catch (err) {
       addToast(err.message || 'Failed to save feedback', 'error');
@@ -688,6 +690,7 @@ export function AppContent() {
                 setActiveApplicant(app);
               }}
               onShortlist={handleShortlist}
+              onOpenOffers={() => setActiveTab('offer-letters')}
               onQuickAdd={() => setIsQuickAddOpen(true)}
               jobOpenings={jobOpenings}
               selectedJob={selectedJob}
@@ -870,6 +873,7 @@ export function AppContent() {
 
       {/* Modals & Slide-overs */}
       <ApplicantDetailModal
+        reloadKey={drawerReloadKey}
         isOpen={!!activeApplicant}
         onClose={() => {
           setActiveApplicant(null);

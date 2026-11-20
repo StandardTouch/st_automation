@@ -15,6 +15,7 @@ import EmployeeSelect from '../../components/EmployeeSelect';
 import { DateInput } from '../../components/common/DateInput';
 
 export function ApplicantDetailModal({
+  reloadKey,
   isOpen,
   onClose,
   applicant,
@@ -107,7 +108,7 @@ export function ApplicantDetailModal({
       setScheduledInterviews([]);
       loadInterviews();
     }
-  }, [isOpen, applicant?.name]);
+  }, [isOpen, applicant?.name, reloadKey]);
 
   const loadInterviews = async () => {
     setIsLoadingInterviews(true);
@@ -295,7 +296,7 @@ export function ApplicantDetailModal({
             </div>
             <div className="min-w-0">
               <span className="text-[13px] font-semibold text-gray-500 dark:text-slate-400 block">Current Stage</span>
-              <Badge variant="primary">{({ Open: 'Applied', Replied: 'Shortlisted' })[applicant.stage || applicant.status] || applicant.stage || applicant.status}</Badge>
+              <Badge variant="primary">{({ applied: 'Applied', shortlisted: 'Shortlisted', awaiting_slot: 'Awaiting Slot Booking', interview_scheduled: 'Interview Scheduled', interview_completed: 'Interview Completed', selected: 'Selected', offer_sent: 'Offer Sent', hired: 'Hired', bench: 'Talent Pool / Bench', rejected: 'Rejected' })[applicant.pipeline_stage] || ({ Open: 'Applied', Replied: 'Shortlisted' })[applicant.stage || applicant.status] || applicant.stage || applicant.status}</Badge>
             </div>
           </div>
         </div>
