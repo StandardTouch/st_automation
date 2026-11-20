@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
+import { DialogA11y } from './DialogA11y';
 
 export function SlideOver({ isOpen, onClose, title, subtitle, children, width = 'max-w-3xl' }) {
   useEffect(() => {
@@ -19,7 +20,8 @@ export function SlideOver({ isOpen, onClose, title, subtitle, children, width = 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <DialogA11y closeOnEscape={false}>
+    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
       {/* Backdrop */}
       <div 
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
@@ -52,5 +54,6 @@ export function SlideOver({ isOpen, onClose, title, subtitle, children, width = 
         </div>
       </div>
     </div>
+    </DialogA11y>
   );
 }

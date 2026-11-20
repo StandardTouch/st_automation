@@ -111,7 +111,7 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="4-Step Loan Application Wizard"
+      title="Loan Application"
       subtitle="Fast employee loan application with EMI preview, optional moratorium and disbursement."
       maxWidth="max-w-xl"
     >
@@ -209,7 +209,7 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="text-sm font-semibold text-brand-grey hover:text-brand-red flex items-center gap-1.5"
+                className="text-sm font-semibold text-brand-grey hover:text-brand-red flex items-center gap-1.5 py-2 -my-2"
               >
                 <Settings2 className="h-3.5 w-3.5" />
                 <span>{showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Options (Moratorium)'}</span>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   PlayCircle, CheckCircle2, AlertCircle, Users, DollarSign, 
   FileText, ArrowRight, ShieldCheck, RefreshCw, Check
@@ -9,6 +9,7 @@ import { Button } from '../../components/common/Button';
 import { Badge } from '../../components/common/Badge';
 import { formatCurrency, formatDate, callApi } from '../../api/client';
 import { useToast } from '../../components/common/Toast';
+import { payrollApi } from '../../api/payrollApi';
 
 export function RunPayrollWizard({
   company,
@@ -16,9 +17,20 @@ export function RunPayrollWizard({
   year,
   onExecutePayroll,
   onViewSalarySlips,
-  onRefresh
+  onRefresh,
+  summary = null,
+  onOpenSalaryStructures,
+  setMonth,
+  setYear
 }) {
   const { addToast } = useToast();
+  // Eligibility comes from the backend (employees with a submitted salary
+  // structure). The backend re-checks every rule when the run is requested.
+  const [eligibility, setEligibility] = useState({ loading: true, error: '', eligible: [], excluded: [], notApplicable: [], snapshot: '' });
+  const [changedNotice, setChangedNotice] = useState('');
+  const [ackPartial, setAckPartial] = useState(false);
+  const [periodConfirmed, setPeriodConfirmed] = useState(false);
+  const [showIncluded, setShowIncluded] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [step, setStep] = useState(1); // 1: Ready to run, 2: Running, 3: Completed Report
   const [result, setResult] = useState(null);
@@ -31,16 +43,58 @@ export function RunPayrollWizard({
   const lastDay = new Date(year, month, 0).getDate();
   const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
 
+  useEffect(() => {
+    if (!company) return undefined; // wait for the company so the first request is scoped
+    let cancelled = false;
+    setEligibility({ loading: true, error: '', eligible: [], excluded: [], notApplicable: [], snapshot: '' });
+    setChangedNotice('');
+    setAckPartial(false);
+    setPeriodConfirmed(false);
+    payrollApi.getPayrollEligibility(company, startDate, endDate)
+      .then((res) => {
+        if (!cancelled) setEligibility({ loading: false, error: '', eligible: res.data?.eligible || [], excluded: res.data?.excluded || [], notApplicable: res.data?.not_applicable || [], snapshot: res.data?.snapshot || '' });
+      })
+      .catch((err) => {
+        if (!cancelled) setEligibility({ loading: false, error: err.message || 'Could not load payroll eligibility', eligible: [], excluded: [], notApplicable: [], snapshot: '' });
+      });
+    return () => { cancelled = true; };
+  }, [company, startDate, endDate]);
+
+  const noneAssigned = !eligibility.loading && !eligibility.error && eligibility.eligible.length === 0;
+  const partial = !eligibility.loading && eligibility.eligible.length > 0 && eligibility.excluded.length > 0;
+  const canStart = !eligibility.loading && !eligibility.error && eligibility.eligible.length > 0 &&
+    periodConfirmed && (eligibility.excluded.length === 0 || ackPartial);
+
   const monthNames = [
     '', 'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
   const handleStartPayroll = async () => {
+    // Re-check just before running: if anyone's eligibility changed since the
+    // lists were shown, the earlier confirmation and acknowledgement no longer
+    // apply (the backend rejects a stale snapshot too).
+    try {
+      const fresh = await payrollApi.getPayrollEligibility(company, startDate, endDate);
+      if ((fresh.data?.snapshot || '') !== eligibility.snapshot) {
+        setEligibility({ loading: false, error: '', eligible: fresh.data?.eligible || [], excluded: fresh.data?.excluded || [], notApplicable: fresh.data?.not_applicable || [], snapshot: fresh.data?.snapshot || '' });
+        setAckPartial(false);
+        setPeriodConfirmed(false);
+        setChangedNotice('Employee eligibility changed since you opened this page. Review the updated lists and confirm again.');
+        return;
+      }
+    } catch (err) {
+      setChangedNotice(err.message || 'Could not re-check eligibility. Nothing was run.');
+      return;
+    }
+    setChangedNotice('');
     setIsExecuting(true);
     setStep(2);
     try {
-      const response = await onExecutePayroll(company, startDate, endDate);
+      const response = await onExecutePayroll(company, startDate, endDate, {
+        eligibilitySnapshot: eligibility.snapshot,
+        acknowledgedExcluded: eligibility.excluded.map((e) => e.name),
+      });
       setResult(response);
       setStep(3);
       setIsSubmitted(false);
@@ -93,8 +147,18 @@ export function RunPayrollWizard({
               <PlayCircle className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-brand-black dark:text-slate-50">
-                Period: {monthNames[month]} {year}
+              <h3 className="text-lg font-bold text-brand-black dark:text-slate-50 flex flex-wrap items-center gap-2">
+                <span>Period:</span>
+                {setMonth && setYear ? (
+                  <>
+                    <select aria-label="Payroll month" value={month} onChange={(e) => setMonth(Number(e.target.value))} className="bg-transparent border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-0.5 text-base font-bold">
+                      {monthNames.slice(1).map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                    </select>
+                    <select aria-label="Payroll year" value={year} onChange={(e) => setYear(Number(e.target.value))} className="bg-transparent border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-0.5 text-base font-bold">
+                      {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((y) => <option key={y} value={y}>{y}</option>)}
+                    </select>
+                  </>
+                ) : <span>{monthNames[month]} {year}</span>}
               </h3>
               <p className="text-sm text-brand-grey">
                 Company: <span className="text-gray-800 dark:text-slate-100 font-semibold">{company || 'Default'}</span> | Dates: <span className="text-gray-800 dark:text-slate-100 font-semibold">{startDate} to {endDate}</span>
@@ -126,12 +190,75 @@ export function RunPayrollWizard({
             </div>
           </div>
 
+          <div data-testid="run-payroll-eligibility" className="space-y-3 text-sm">
+            <h4 className="text-sm font-bold uppercase tracking-wider text-brand-grey">Who is included</h4>
+            {eligibility.loading && <p className="text-brand-grey">Checking salary structures…</p>}
+            {changedNotice && (
+              <p role="alert" data-testid="eligibility-changed" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900">{changedNotice}</p>
+            )}
+            {eligibility.error && (
+              <p role="alert" className="rounded-xl border border-rose-300 bg-rose-50 p-3 text-rose-800">{eligibility.error}</p>
+            )}
+            {!eligibility.loading && !eligibility.error && (
+              <>
+                {eligibility.eligible.length > 0 && (
+                <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-3 text-emerald-900">
+                  <button type="button" onClick={() => setShowIncluded((v) => !v)} aria-expanded={showIncluded} className="font-bold underline-offset-2 hover:underline py-2 -my-2">
+                    Included: {eligibility.eligible.length} employee{eligibility.eligible.length === 1 ? '' : 's'}
+                  </button>
+                  {showIncluded && (
+                    <ul className="mt-2 max-h-40 overflow-y-auto list-disc pl-5">
+                      {eligibility.eligible.map((e) => <li key={e.name}>{e.employee_name} ({e.name})</li>)}
+                    </ul>
+                  )}
+                </div>
+                )}
+                {eligibility.excluded.length > 0 && (
+                  <div role="alert" data-testid="run-payroll-readiness-warning" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900 space-y-2">
+                    <p className="font-bold flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      {noneAssigned
+                        ? `Payroll can't run yet: none of the ${eligibility.excluded.length} active employees has a salary structure.`
+                        : `Excluded: ${eligibility.excluded.length} employee${eligibility.excluded.length === 1 ? '' : 's'} without a salary structure will not get a salary slip.`}
+                    </p>
+                    <ul className="max-h-40 overflow-y-auto list-disc pl-5">
+                      {eligibility.excluded.map((e) => <li key={e.name}>{e.employee_name} ({e.name}){e.reason ? ` — ${e.reason}` : ''}</li>)}
+                    </ul>
+                    {onOpenSalaryStructures && (
+                      <button type="button" onClick={onOpenSalaryStructures} className="underline font-semibold">
+                        Open Salary Structures to fix this
+                      </button>
+                    )}
+                    {partial && (
+                      <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                        <input type="checkbox" data-testid="ack-excluded" checked={ackPartial} onChange={(e) => setAckPartial(e.target.checked)} className="mt-1" />
+                        <span>I acknowledge that these {eligibility.excluded.length} employees are excluded from this run.</span>
+                      </label>
+                    )}
+                  </div>
+                )}
+                {eligibility.notApplicable.length > 0 && (
+                  <p className="text-xs text-brand-grey" data-testid="not-applicable">
+                    Not payable this period ({eligibility.notApplicable.length}): {eligibility.notApplicable.map((e) => `${e.employee_name} (${e.reason})`).join('; ')}
+                  </p>
+                )}
+                {!noneAssigned && (
+                  <label className="flex items-start gap-2 cursor-pointer rounded-xl border border-gray-200 dark:border-slate-700 p-3">
+                    <input type="checkbox" data-testid="confirm-period" checked={periodConfirmed} onChange={(e) => setPeriodConfirmed(e.target.checked)} className="mt-1" />
+                    <span>I confirm the payroll period is <strong>{monthNames[month]} {year}</strong> ({startDate} to {endDate}).</span>
+                  </label>
+                )}
+              </>
+            )}
+          </div>
+
           <div className="pt-4 border-t border-gray-200 dark:border-slate-700 flex items-center justify-end">
             <Button
               size="lg"
               variant="primary"
               icon={PlayCircle}
               onClick={handleStartPayroll}
+              disabled={!canStart}
             >
               Start Payroll Processing
             </Button>

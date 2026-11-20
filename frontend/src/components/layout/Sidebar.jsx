@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Users, Briefcase, CalendarCheck, 
   DollarSign, PlayCircle, Gift, CreditCard, 
   FileText, Activity, ExternalLink, Users2,
-  UserPlus, UserMinus, MessageSquare, BarChart3, Heart, Layers
+  UserPlus, UserMinus, MessageSquare, BarChart3, Heart, Layers,
+  LogOut, Monitor, ChevronUp
 } from 'lucide-react';
+import { getCsrfToken } from '../../api/client';
 
 export function buildNavSections(userProfile) {
   const isHR = userProfile?.is_hr_admin || userProfile?.is_system_manager;
@@ -39,14 +41,14 @@ export function buildNavSections(userProfile) {
         { id: 'run-payroll', label: 'Run Monthly Payroll', icon: PlayCircle, visible: isHR, badge: 'Wizard' },
         { id: 'salary-structures', label: 'Salary Structures', icon: Layers, visible: isHR },
         { id: 'loans', label: 'Loans & Advances', icon: CreditCard, visible: isHR, badge: '3-Step' },
-        { id: 'salary-slips', label: 'My Salary Slips', icon: FileText, visible: isHR || isEmployee },
+        { id: 'salary-slips', label: isHR ? 'Salary Slips' : 'My Salary Slips', icon: FileText, visible: isHR || isEmployee },
       ]
     },
     {
       title: 'Feedback & Culture',
       visible: true,
       items: [
-        { id: 'staff-feedback', label: 'Staff Feedback', icon: MessageSquare, visible: true },
+        { id: 'staff-feedback', label: 'Share Feedback', icon: MessageSquare, visible: true },
         { id: 'my-feedback', label: 'My Feedback', icon: Heart, visible: true },
         { id: 'feedback-analytics', label: 'Feedback Analytics', icon: BarChart3, visible: isHR },
       ]
@@ -64,6 +66,38 @@ export function buildNavSections(userProfile) {
 
 export function Sidebar({ activeTab, setActiveTab, userProfile, isMobileOpen, setIsMobileOpen }) {
   const navSections = buildNavSections(userProfile);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // Close the user menu on outside click or Escape.
+  useEffect(() => {
+    if (!isUserMenuOpen) return undefined;
+    const onDown = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setIsUserMenuOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setIsUserMenuOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isUserMenuOpen]);
+
+  const canUseDesk = !!(userProfile?.is_hr_admin || userProfile?.is_system_manager);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/method/logout', {
+        method: 'POST',
+        headers: { 'X-Frappe-CSRF-Token': getCsrfToken() },
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('Logout failed', err);
+    }
+    window.location.href = '/login';
+  };
 
   return (
     <>
@@ -130,9 +164,41 @@ export function Sidebar({ activeTab, setActiveTab, userProfile, isMobileOpen, se
           ))}
         </div>
 
-        {/* User Info Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-slate-700/80 bg-gray-50 dark:bg-slate-900/60">
-          <div className="flex items-center gap-3">
+        {/* User Info Footer — click for account menu */}
+        <div ref={userMenuRef} className="relative p-4 border-t border-gray-200 dark:border-slate-700/80 bg-gray-50 dark:bg-slate-900/60">
+          {isUserMenuOpen && (
+            <div
+              role="menu"
+              className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl py-1.5 z-50"
+            >
+              {canUseDesk && (
+                <a
+                  href="/app"
+                  role="menuitem"
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-semibold text-gray-800 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700"
+                >
+                  <Monitor className="h-4 w-4 text-brand-grey" />
+                  Switch to Desk
+                </a>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={isUserMenuOpen}
+            onClick={() => setIsUserMenuOpen((o) => !o)}
+            className="w-full flex items-center gap-3 text-left rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors -m-1 p-1"
+          >
             <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-600 flex items-center justify-center font-bold text-sm text-brand-red">
               {userProfile?.full_name?.charAt(0) || 'U'}
             </div>
@@ -140,7 +206,8 @@ export function Sidebar({ activeTab, setActiveTab, userProfile, isMobileOpen, se
               <p className="text-sm font-semibold text-brand-black dark:text-slate-50 truncate">{userProfile?.full_name || 'HR Team'}</p>
               <p className="text-xs text-brand-grey truncate">{userProfile?.email || 'Logged in'}</p>
             </div>
-          </div>
+            <ChevronUp className={`h-4 w-4 text-brand-grey transition-transform ${isUserMenuOpen ? '' : 'rotate-180'}`} />
+          </button>
         </div>
       </aside>
     </>

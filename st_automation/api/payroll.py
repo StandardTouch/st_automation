@@ -3,6 +3,7 @@ from frappe.utils import (
 	nowdate, getdate, formatdate, flt, cint,
 	add_months, get_first_day, get_last_day, format_datetime
 )
+import hashlib
 import json
 from st_automation.api.utils import (
 	success_response, error_response, safe_float, safe_int, ensure_custom_fields_exist,
@@ -21,6 +22,281 @@ def _assert_hr_admin():
 	roles = set(frappe.get_roles(user))
 	if not roles & HR_ADMIN_ROLES:
 		frappe.throw("You do not have permission to perform this action.", frappe.PermissionError)
+
+
+# ── Payroll eligibility rules (pure helpers are unit-tested without a DB) ──────
+
+def _as_list(value):
+	"""Frappe passes list arguments as JSON strings; accept both."""
+	if not value:
+		return []
+	if isinstance(value, str):
+		try:
+			value = json.loads(value)
+		except ValueError:
+			return []
+	return [str(v) for v in value] if isinstance(value, (list, tuple, set)) else []
+
+
+def _classify_payroll_employees(employees, assignments, structures, start_date, end_date):
+	"""Classify active employees for a payroll period. Pure (no DB), unit-tested.
+
+	employees:   dicts with name, employee_name, status, date_of_joining, relieving_date
+	assignments: SUBMITTED salary structure assignments (employee, from_date, salary_structure, name)
+	structures:  {structure name: {"docstatus": int, "is_active": "Yes"/"No"}}
+
+	Returns (eligible, excluded, not_applicable):
+	  * not_applicable - not payable this period (inactive, joins after the period, relieved before it);
+	  * excluded       - payable but missing a usable salary structure on the period end date;
+	  * eligible       - has a usable structure. A superseded assignment never counts: the latest
+	                     assignment effective on or before the period end wins.
+	"""
+	start, end = getdate(start_date), getdate(end_date)
+	by_emp = {}
+	for a in assignments or []:
+		if a.get("from_date") and getdate(a["from_date"]) <= end:
+			by_emp.setdefault(a["employee"], []).append(a)
+
+	eligible, excluded, not_applicable = [], [], []
+	for e in employees:
+		base = {"name": e["name"], "employee_name": e.get("employee_name")}
+		if e.get("status") and e["status"] != "Active":
+			not_applicable.append({**base, "reason": f"Employee status is {e['status']}"})
+			continue
+		if e.get("date_of_joining") and getdate(e["date_of_joining"]) > end:
+			not_applicable.append({**base, "reason": "Joins after the payroll period"})
+			continue
+		if e.get("relieving_date") and getdate(e["relieving_date"]) < start:
+			not_applicable.append({**base, "reason": "Relieved before the payroll period"})
+			continue
+		rows = by_emp.get(e["name"], [])
+		if not rows:
+			excluded.append({**base, "reason": f"No salary structure assignment effective by {end}"})
+			continue
+		latest = sorted(rows, key=lambda r: (getdate(r["from_date"]), r.get("name") or ""))[-1]
+		st = (structures or {}).get(latest["salary_structure"])
+		if not st or st.get("docstatus") != 1 or st.get("is_active") != "Yes":
+			excluded.append({**base, "reason": f"Salary structure {latest['salary_structure']} is not active and submitted"})
+			continue
+		eligible.append({**base, "salary_structure": latest["salary_structure"], "assignment": latest.get("name")})
+	return eligible, excluded, not_applicable
+
+
+def _period_token(start_date, end_date):
+	return f"{getdate(start_date)}:{getdate(end_date)}"
+
+
+def _eligibility_snapshot(company, start_date, end_date, eligible, excluded):
+	"""Fingerprint of the exact period + who is included/excluded (and with which structure).
+
+	A user's acknowledgement is only valid for the snapshot they were shown. If an employee is
+	added, removed, moves between lists, or their effective structure changes, the snapshot
+	changes and the old acknowledgement is rejected.
+	"""
+	payload = {
+		"company": company,
+		"period": _period_token(start_date, end_date),
+		"eligible": sorted((e["name"], e.get("assignment") or "", e.get("salary_structure") or "") for e in eligible),
+		"excluded": sorted(e["name"] for e in excluded),
+	}
+	return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:32]
+
+
+def _partial_payroll_error(result, current_snapshot, supplied_snapshot, acknowledged_excluded):
+	"""Return an error message if the run may not proceed, else None.
+
+	Rules, enforced server-side regardless of the UI:
+	  1. at least one eligible employee;
+	  2. the caller supplied the snapshot of the CURRENT eligibility (period + lists);
+	  3. every currently excluded employee was acknowledged.
+	"""
+	if not result["eligible"]:
+		return "No employees are eligible for payroll: none of the active employees has an active, submitted salary structure."
+	if not supplied_snapshot or supplied_snapshot != current_snapshot:
+		return (
+			"Payroll eligibility changed or was not confirmed for this period. "
+			"Review the current included and excluded employees and confirm again."
+		)
+	if result["excluded"]:
+		acknowledged = set(_as_list(acknowledged_excluded))
+		missing = [e["name"] for e in result["excluded"] if e["name"] not in acknowledged]
+		if missing:
+			return (
+				f"{len(missing)} employee(s) without a usable salary structure will be skipped and must be "
+				"acknowledged before running payroll."
+			)
+	return None
+
+
+def _fetch_payroll_eligibility(company, start_date, end_date):
+	"""Read-only DB fetch + classification. Returns a dict incl. the snapshot."""
+	employees = frappe.get_all(
+		"Employee",
+		filters={"status": "Active", "company": company},
+		fields=["name", "employee_name", "status", "date_of_joining", "relieving_date"],
+		order_by="employee_name asc",
+	)
+	names = [e["name"] for e in employees]
+	assignments = frappe.get_all(
+		"Salary Structure Assignment",
+		filters={"docstatus": 1, "from_date": ["<=", end_date], "employee": ["in", names or [""]]},
+		fields=["name", "employee", "from_date", "salary_structure"],
+		order_by="from_date asc",
+	) if names else []
+	used = list({a["salary_structure"] for a in assignments})
+	structures = {
+		s["name"]: s for s in frappe.get_all(
+			"Salary Structure", filters={"name": ["in", used]}, fields=["name", "docstatus", "is_active"]
+		)
+	} if used else {}
+	eligible, excluded, not_applicable = _classify_payroll_employees(employees, assignments, structures, start_date, end_date)
+	return {
+		"eligible": eligible,
+		"excluded": excluded,
+		"not_applicable": not_applicable,
+		"snapshot": _eligibility_snapshot(company, start_date, end_date, eligible, excluded),
+	}
+
+
+@frappe.whitelist()
+def get_payroll_eligibility(company, start_date, end_date):
+	"""Read-only: who a payroll run would include/exclude, plus the snapshot to confirm."""
+	_assert_hr_admin()
+	try:
+		if not company or not start_date or not end_date:
+			return error_response("Company, start date and end date are required.")
+		r = _fetch_payroll_eligibility(company, start_date, end_date)
+		return success_response({
+			"company": company,
+			"period_token": _period_token(start_date, end_date),
+			"snapshot": r["snapshot"],
+			"eligible": r["eligible"],
+			"excluded": r["excluded"],
+			"not_applicable": r["not_applicable"],
+			"eligible_count": len(r["eligible"]),
+			"excluded_count": len(r["excluded"]),
+		})
+	except Exception as e:
+		return error_response("Error loading payroll eligibility", e)
+
+
+# ── Bulk salary structure assignment ──────────────────────────────────────────
+
+def _validate_bulk_assignments(rows, valid_structures, employee_company, already_assigned):
+	"""Validate proposed assignments. Returns a list of {index, employee, errors}.
+
+	`valid_structures` is a set of usable structure names, `employee_company` maps
+	active employee -> company, `already_assigned` is a set of employee ids that
+	already have a submitted assignment on/after the requested date.
+	"""
+	problems = []
+	seen = set()
+	for i, row in enumerate(rows):
+		errors = []
+		emp = (row.get("employee") or "").strip()
+		if not emp:
+			errors.append("Employee is required.")
+		elif emp in seen:
+			errors.append("Employee is listed more than once.")
+		elif emp not in employee_company:
+			errors.append("Employee is not an active employee.")
+		seen.add(emp)
+		if emp in already_assigned:
+			errors.append("Employee already has a salary structure assignment.")
+		if (row.get("salary_structure") or "") not in valid_structures:
+			errors.append("Choose a submitted, active salary structure.")
+		if safe_float(row.get("base")) <= 0:
+			errors.append("Base salary must be greater than zero.")
+		if not row.get("from_date"):
+			errors.append("Effective date is required.")
+		else:
+			try:
+				getdate(row.get("from_date"))
+			except Exception:
+				errors.append("Effective date is not a valid date.")
+		if errors:
+			problems.append({"index": i, "employee": emp, "errors": errors})
+	return problems
+
+
+@frappe.whitelist()
+def get_unassigned_employees(company=None):
+	"""Read-only: active employees with no submitted salary structure assignment."""
+	_assert_hr_admin()
+	try:
+		filters = {"status": "Active"}
+		if company:
+			filters["company"] = company
+		employees = frappe.get_all("Employee", filters=filters, fields=["name", "employee_name", "designation"], order_by="employee_name asc")
+		assigned = {r.employee for r in frappe.db.sql(
+			"SELECT DISTINCT employee FROM `tabSalary Structure Assignment` WHERE docstatus = 1", as_dict=True)}
+		return success_response([e for e in employees if e["name"] not in assigned])
+	except Exception as e:
+		return error_response("Error loading unassigned employees", e)
+
+
+@frappe.whitelist()
+def bulk_assign_salary_structure(assignments, company, dry_run=1, confirmed=0):
+	"""Validate, preview and (only when explicitly confirmed) create assignments.
+
+	`dry_run` defaults to 1: nothing is written, the response lists per-row
+	validation problems. A real write needs dry_run=0 AND confirmed=1 AND zero
+	validation problems, and is all-or-nothing (rolled back on any error).
+	"""
+	_assert_hr_admin()
+	try:
+		rows = assignments
+		if isinstance(rows, str):
+			rows = json.loads(rows)
+		if not isinstance(rows, list) or not rows:
+			return error_response("Select at least one employee.")
+		if len(rows) > 200:
+			return error_response("Too many rows in one batch (maximum 200).")
+		if not company:
+			return error_response("Company is required.")
+
+		valid_structures = set(frappe.get_all(
+			"Salary Structure",
+			filters={"docstatus": 1, "is_active": "Yes", "company": company},
+			pluck="name",
+		))
+		emp_rows = frappe.get_all("Employee", filters={"status": "Active", "company": company}, fields=["name"])
+		employee_company = {e["name"]: company for e in emp_rows}
+		already = {r.employee for r in frappe.db.sql(
+			"SELECT DISTINCT employee FROM `tabSalary Structure Assignment` WHERE docstatus = 1", as_dict=True)}
+
+		problems = _validate_bulk_assignments(rows, valid_structures, employee_company, already)
+		preview = [{
+			"employee": r.get("employee"), "salary_structure": r.get("salary_structure"),
+			"base": safe_float(r.get("base")), "from_date": r.get("from_date"),
+		} for r in rows]
+
+		if cint(dry_run) or problems:
+			return success_response({"dry_run": True, "valid": not problems, "problems": problems, "preview": preview},
+				message="Preview only. No assignments were created." if not problems else "Fix the listed problems first.")
+		if not cint(confirmed):
+			return error_response("Explicit confirmation is required to create assignments.")
+
+		created = []
+		try:
+			for r in rows:
+				doc = frappe.new_doc("Salary Structure Assignment")
+				doc.employee = r["employee"]
+				doc.salary_structure = r["salary_structure"]
+				doc.from_date = r["from_date"]
+				doc.company = company
+				doc.base = safe_float(r["base"])
+				doc.flags.ignore_permissions = True
+				doc.insert(ignore_permissions=True)
+				doc.submit()
+				created.append(doc.name)
+		except Exception:
+			frappe.db.rollback()
+			raise
+		frappe.db.commit()
+		return success_response({"created": created, "count": len(created)}, message=f"Created {len(created)} salary structure assignment(s).")
+	except Exception as e:
+		return error_response(f"Failed to bulk assign salary structures: {str(e)}", e)
 
 
 @frappe.whitelist()
@@ -476,7 +752,7 @@ def disburse_loan(loan_name, disbursement_date=None):
 
 
 @frappe.whitelist()
-def run_payroll_and_report(company, start_date, end_date, cost_center=None):
+def run_payroll_and_report(company, start_date, end_date, cost_center=None, eligibility_snapshot=None, acknowledged_excluded=None):
 	"""
 	1-Click Payroll Execution Engine:
 	Creates Payroll Entry -> Fetches Employees -> Creates Salary Slips -> Submits Slips.
@@ -490,6 +766,14 @@ def run_payroll_and_report(company, start_date, end_date, cost_center=None):
 			return error_response("Start date and end date are required.")
 		if getdate(end_date) < getdate(start_date):
 			return error_response("End date cannot be before the start date.")
+
+		# Server-side payroll rules (do not rely on the UI): eligible employees must
+		# exist, the caller must present the snapshot of the CURRENT eligibility
+		# (which embeds the period), and every excluded employee must be acknowledged.
+		_elig = _fetch_payroll_eligibility(company, start_date, end_date)
+		_rule_error = _partial_payroll_error(_elig, _elig["snapshot"], eligibility_snapshot, acknowledged_excluded)
+		if _rule_error:
+			return error_response(_rule_error)
 
 		# Self-healing: Ensure company has a default payroll payable account
 		company_doc = frappe.get_doc("Company", company)

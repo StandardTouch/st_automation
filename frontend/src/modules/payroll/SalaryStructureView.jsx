@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from '../../api/client';
 import { salaryStructureApi } from '../../api/salaryStructureApi';
 import { SalaryStructureFormModal } from './SalaryStructureFormModal';
 import { AssignSalaryStructureModal } from './AssignSalaryStructureModal';
+import { BulkAssignStructureModal } from './BulkAssignStructureModal';
 
 const DOC_STATUS = { 0: ['Draft', 'warning'], 1: ['Submitted', 'success'], 2: ['Cancelled', 'danger'] };
 
@@ -19,6 +20,7 @@ export function SalaryStructureView({ company, onChanged }) {
   const [search, setSearch] = useState('');
   const [formState, setFormState] = useState({ open: false, name: null });
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -76,6 +78,7 @@ export function SalaryStructureView({ company, onChanged }) {
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" icon={Building2} onClick={() => setIsAssignOpen(true)}>Assign Structure</Button>
+          <Button variant="secondary" size="sm" icon={Building2} onClick={() => setIsBulkOpen(true)}>Assign to many</Button>
           <Button variant="primary" icon={Plus} onClick={() => setFormState({ open: true, name: null })}>New Structure</Button>
         </div>
       </div>
@@ -181,11 +184,19 @@ export function SalaryStructureView({ company, onChanged }) {
         onClose={() => setFormState({ open: false, name: null })}
         onSaved={refresh}
       />
+      <BulkAssignStructureModal
+        isOpen={isBulkOpen}
+        onClose={() => setIsBulkOpen(false)}
+        company={company}
+        onSuccess={refresh}
+        onCreateStructure={() => { setIsBulkOpen(false); setFormState({ open: true, name: null }); }}
+      />
       <AssignSalaryStructureModal
         isOpen={isAssignOpen}
         onClose={() => setIsAssignOpen(false)}
         company={company}
         onSuccess={refresh}
+        onCreateStructure={() => { setIsAssignOpen(false); setFormState({ open: true, name: null }); }}
       />
     </div>
   );

@@ -37,16 +37,16 @@ export function JobOpeningsView({ jobOpenings = [], onTogglePublish, isLoading, 
                     {onEditJobOpening && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onEditJobOpening(job); }}
-                        className="text-gray-300 hover:text-brand-red transition-colors"
-                        title="Edit Job Opening"
+                        className="p-1.5 -m-1.5 text-gray-400 hover:text-brand-red transition-colors"
+                        title="Edit Job Opening" aria-label={`Edit ${job.job_title || job.name}`}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                     )}
                     <button 
                       onClick={(e) => { e.stopPropagation(); onDeleteJobOpening(job.name); }}
-                      className="text-gray-300 hover:text-red-500 transition-colors"
-                      title="Delete Job Opening"
+                      className="p-1.5 -m-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                      title="Delete Job Opening" aria-label={`Delete ${job.job_title || job.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -54,27 +54,27 @@ export function JobOpeningsView({ jobOpenings = [], onTogglePublish, isLoading, 
 
                 </div>
 
-                <div className="text-sm text-brand-grey space-y-1">
-                  {job.department && <p>Department: <span className="text-gray-800 dark:text-slate-100">{job.department}</span></p>}
-                  {job.designation && <p>Designation: <span className="text-gray-800 dark:text-slate-100">{job.designation}</span></p>}
-                  {job.status === 'Closed' ? (
-                    <p><Badge variant="warning">Closed</Badge></p>
-                  ) : job.status ? (
-                    <p>Status: <span className="text-gray-800 dark:text-slate-100">{job.status}</span></p>
-                  ) : null}
-                  {job.vacancies > 0 && <p>Vacancies: <span className="text-gray-800 dark:text-slate-100">{job.vacancies}</span></p>}
+                <div className="flex items-center gap-2">
+                  <Badge variant={job.status === 'Closed' ? 'warning' : 'success'}>{job.status || 'Open'}</Badge>
                 </div>
+                <dl className="text-sm text-brand-grey grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
+                  <dt>Department</dt><dd className="text-gray-800 dark:text-slate-100">{job.department || '—'}</dd>
+                  <dt>Designation</dt><dd className="text-gray-800 dark:text-slate-100">{job.designation || '—'}</dd>
+                  <dt>Vacancies</dt><dd className="text-gray-800 dark:text-slate-100">{job.vacancies > 0 ? job.vacancies : '—'}</dd>
+                </dl>
               </div>
 
               {/* Stats & Actions */}
               <div className="pt-3 border-t border-gray-200 dark:border-slate-700 flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-sm font-semibold text-brand-red">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-slate-300">
                   <Users className="h-4 w-4" />
                   <span>{job.applicant_count || 0} Candidates</span>
                 </div>
 
                 <button
-                  onClick={() => onTogglePublish(job.name, !job.publish)}
+                  onClick={(e) => { e.stopPropagation(); onTogglePublish(job.name, !job.publish); }}
+                  aria-pressed={!!job.publish}
+                  title={job.publish ? 'Visible on the careers page. Click to hide.' : 'Not on the careers page. Click to publish.'}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold transition-all ${
                     job.publish
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
@@ -82,7 +82,7 @@ export function JobOpeningsView({ jobOpenings = [], onTogglePublish, isLoading, 
                   }`}
                 >
                   <Globe className="h-3.5 w-3.5" />
-                  <span>{job.publish ? 'Published' : 'Hidden'}</span>
+                  <span>{job.publish ? 'On careers page' : 'Not published'}</span>
                 </button>
               </div>
             </div>

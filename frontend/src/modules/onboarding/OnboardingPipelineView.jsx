@@ -247,7 +247,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
                           className={`rounded-xl border transition-all ${
                             isCompleted ? 'bg-white dark:bg-slate-800 border-green-200 dark:border-green-900/40' :
                             isCurrent ? 'bg-white dark:bg-slate-800 border-brand-red shadow-sm ring-1 ring-brand-red/10' :
-                            'bg-slate-100/50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700 opacity-60'
+                            'bg-slate-100/50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700 opacity-90'
                           }`}
                         >
                           <div className="flex items-center justify-between p-4">
@@ -307,7 +307,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
                                 <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-1.5 rounded-lg">Completed</span>
                               )}
                               {isLocked && (
-                                <span className="text-xs font-medium text-slate-400 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg">Locked</span>
+                                <span title="Unlocks when the task before it is complete" className="text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700 px-3 py-1.5 rounded-lg">Locked until previous task is done</span>
                               )}
                             </div>
                           </div>

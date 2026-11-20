@@ -10,6 +10,9 @@ import { formatDate } from '../../api/client';
 import { useToast } from '../../components/common/Toast';
 import { offerLetterApi } from '../../api/offerLetterApi';
 import { DateInput } from '../../components/common/DateInput';
+import { useEscapeClose } from '../../components/common/useEscapeClose';
+import { Portal } from '../../components/common/Portal';
+import { DialogA11y } from '../../components/common/DialogA11y';
 
 export function OfferLettersView({
   offers = [],
@@ -24,6 +27,8 @@ export function OfferLettersView({
   const [previewHtml, setPreviewHtml] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+  useEscapeClose(isGenerateOpen, () => setIsGenerateOpen(false));
+  useEscapeClose(!!selectedOffer && !!previewHtml, () => { setSelectedOffer(null); setPreviewHtml(''); });
   const [isSending, setIsSending] = useState(false);
   const [onboardingOffer, setOnboardingOffer] = useState(null);
 
@@ -329,7 +334,7 @@ export function OfferLettersView({
         ) : (
           <div>
             {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden xl:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">
@@ -345,7 +350,7 @@ export function OfferLettersView({
                   {filteredOffers.map((offer) => (
                     <tr key={offer.name} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
                       <td className="py-4 px-6">
-                        <div className="font-semibold text-brand-black dark:text-slate-50">{offer.name}</div>
+                        <div className="font-semibold whitespace-nowrap text-brand-black dark:text-slate-50">{offer.name}</div>
                         <div className="text-xs text-gray-500">{formatDate(offer.offer_date)}</div>
                       </td>
                       <td className="py-4 px-6">
@@ -448,8 +453,8 @@ export function OfferLettersView({
               </table>
             </div>
 
-            {/* Mobile / Tablet Cards View (screens < md) */}
-            <div className="md:hidden divide-y divide-gray-200 dark:divide-slate-700">
+            {/* Mobile / Tablet / narrow-laptop cards view (screens < xl, where the sidebar leaves too little width for the 6-column table) */}
+            <div className="xl:hidden divide-y divide-gray-200 dark:divide-slate-700">
               {filteredOffers.map((offer) => (
                 <div key={offer.name} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
@@ -488,19 +493,19 @@ export function OfferLettersView({
 
                   <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-slate-800">
                     <div>
-                      <span className="text-gray-400 block text-[10px] uppercase font-semibold">Position</span>
+                      <span className="text-gray-400 block text-xs uppercase font-semibold">Position</span>
                       <span className="font-medium text-gray-800 dark:text-slate-200">{offer.designation || '-'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-400 block text-[10px] uppercase font-semibold">Offer Date</span>
+                      <span className="text-gray-400 block text-xs uppercase font-semibold">Offer Date</span>
                       <span className="font-medium text-gray-800 dark:text-slate-200">{formatDate(offer.offer_date)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-400 block text-[10px] uppercase font-semibold">Training Stipend</span>
+                      <span className="text-gray-400 block text-xs uppercase font-semibold">Training Stipend</span>
                       <span className="font-medium text-emerald-600">{offer.training_stipend || 'INR 5,000/mo'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-400 block text-[10px] uppercase font-semibold">Post Salary</span>
+                      <span className="text-gray-400 block text-xs uppercase font-semibold">Post Salary</span>
                       <span className="font-medium text-gray-800 dark:text-slate-200">{offer.salary_range || '-'}</span>
                     </div>
                   </div>
@@ -540,7 +545,7 @@ export function OfferLettersView({
 
       {/* Offer Letter Document Preview & Print Modal */}
       {selectedOffer && previewHtml && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4">
+        <Portal><DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-slate-700">
             {/* Modal Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 gap-3">
@@ -592,13 +597,13 @@ export function OfferLettersView({
               </div>
             </div>
           </div>
-        </div>
+        </div></DialogA11y></Portal>
       )}
 
       {/* Generator Form Modal */}
       {isGenerateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl my-8 overflow-hidden border border-gray-200 dark:border-slate-700">
+        <Portal><DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4">
+          <div role="dialog" aria-modal="true" aria-label="Generate Offer Letter" className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto border border-gray-200 dark:border-slate-700">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-brand-red">
@@ -993,7 +998,7 @@ export function OfferLettersView({
                         key={role}
                         type="button"
                         onClick={() => handleSelectPreset(role)}
-                        className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium transition-all ${
+                        className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all ${
                           selectedPreset === role
                             ? 'bg-brand-red text-white shadow-sm'
                             : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
@@ -1035,7 +1040,7 @@ export function OfferLettersView({
               </div>
             </form>
           </div>
-        </div>
+        </div></DialogA11y></Portal>
       )}
     </div>
   );

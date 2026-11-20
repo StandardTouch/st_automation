@@ -56,7 +56,7 @@ export function ActiveLoansView({ onLaunchLoanWizard, company, loans = [], isLoa
           <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto">
             <CreditCard className="h-6 w-6" />
           </div>
-          <h3 className="text-base font-bold text-brand-black dark:text-slate-50">Active Loan Management</h3>
+          <h3 className="text-base font-bold text-brand-black dark:text-slate-50">No loans yet</h3>
           <p className="text-sm text-brand-grey max-w-md mx-auto">
             Loans created here automatically link repayment schedules directly to monthly payroll runs.
           </p>

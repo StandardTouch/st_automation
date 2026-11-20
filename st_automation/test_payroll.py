@@ -37,9 +37,9 @@ def test_payroll_deep():
                 print(f"-> Assigned {structures[0].name} to {emp_name}")
 
     # 3. Run payroll
-    from st_automation.api.payroll import run_payroll_and_report
+    from st_automation.api.payroll_cli import run_payroll_checked
     print("Executing Payroll Run...")
-    res = run_payroll_and_report(company, "2026-08-01", "2026-08-31")
+    res = run_payroll_checked(company, "2026-08-01", "2026-08-31")
     import json
     if isinstance(res, dict):
         print(json.dumps(res, indent=2))

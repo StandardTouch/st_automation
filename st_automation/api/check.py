@@ -1,5 +1,6 @@
 import frappe
-from st_automation.api.payroll import create_loan_and_disburse, run_payroll_and_report, assign_salary_structure
+from st_automation.api.payroll import create_loan_and_disburse, assign_salary_structure
+from st_automation.api.payroll_cli import run_payroll_checked
 
 def run():
     print("----- TESTING LOAN CREATION -----")
@@ -45,7 +46,7 @@ def run():
     print("Disabled 'Email Salary Slip to Employee' in HR Settings.")
     
     try:
-        res = run_payroll_and_report(
+        res = run_payroll_checked(
             company="StandardTouch",
             start_date="2026-08-01",
             end_date="2026-08-31"

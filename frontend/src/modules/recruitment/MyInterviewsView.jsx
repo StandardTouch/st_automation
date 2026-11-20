@@ -9,7 +9,7 @@ export function MyInterviewsView({ interviews = [], onOpenFeedback, onOpenCandid
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">My Scheduled Interviews</h2>
+          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Scheduled Interviews</h2>
           <p className="text-sm text-brand-grey">View upcoming candidates, review resumes inline, and submit 1-click scorecards.</p>
         </div>
         {onScheduleAdHoc && (
@@ -37,7 +37,7 @@ export function MyInterviewsView({ interviews = [], onOpenFeedback, onOpenCandid
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-base font-bold text-brand-black dark:text-slate-50 tracking-tight">{item.applicant_name}</h3>
-                  <p className="text-sm text-brand-red font-semibold mt-0.5">{item.job_title}</p>
+                  <p className="text-sm text-brand-grey font-semibold mt-0.5">{item.job_title}</p>
                 </div>
                 <Badge variant={['Completed', 'Cleared'].includes(item.status) ? 'success' : 'primary'}>
                   {item.status || 'Scheduled'}

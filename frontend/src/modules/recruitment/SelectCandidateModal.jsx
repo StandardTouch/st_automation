@@ -37,7 +37,7 @@ export function SelectCandidateModal({ isOpen, onClose, onSelect, company }) {
       isOpen={isOpen}
       onClose={onClose}
       title="Schedule Interview"
-      subtitle="Select a shortlisted candidate to schedule an interview round for."
+      subtitle="Select a shortlisted candidate to schedule an interview round for. Only shortlisted candidates linked to a job opening of this company are listed; applicants without a job opening (General Applicant) are not shown."
       maxWidth="max-w-md"
     >
       <div className="space-y-4">

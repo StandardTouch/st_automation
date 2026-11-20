@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Star, CheckCircle, ThumbsUp, ThumbsDown, Clock, ShieldCheck } from 'lucide-react';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
+import { ratingConflict, conflictExplanationError } from '../../utils/feedbackRules';
 
 export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFeedback, isSubmitting }) {
   const [rating, setRating] = useState(4);
@@ -9,8 +10,14 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
   const [techRating, setTechRating] = useState(4);
   const [commRating, setCommRating] = useState(4);
   const [comments, setComments] = useState('');
+  const [conflictExplanation, setConflictExplanation] = useState('');
 
   if (!interview) return null;
+
+  // A conflicting rating/recommendation is allowed, but only with a written
+  // explanation (also enforced by the backend for new submissions).
+  const hasConflict = ratingConflict(rating, recommendation);
+  const explanationError = conflictExplanationError(rating, recommendation, conflictExplanation);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -19,7 +26,8 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
       tech_rating: techRating,
       comm_rating: commRating,
     };
-    onSubmitFeedback(interview.interview_id, rating, recommendation, comments, scorecard);
+    if (conflictExplanationError(rating, recommendation, conflictExplanation)) return;
+    onSubmitFeedback(interview.interview_id, rating, recommendation, comments, scorecard, ratingConflict(rating, recommendation) ? conflictExplanation.trim() : undefined);
   };
 
   const recOptions = [
@@ -49,6 +57,7 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
                 key={star}
                 type="button"
                 onClick={() => setRating(star)}
+                aria-label={`${star} star${star > 1 ? 's' : ''}`}
                 className="p-1.5 transition-transform hover:scale-125 focus:outline-none"
               >
                 <Star
@@ -136,6 +145,24 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
           />
         </div>
 
+        {hasConflict && (
+          <div role="alert" data-testid="rating-mismatch-warning" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 space-y-2">
+            <p>Overall rating {rating}/5 does not match "{recommendation === 'Fail' ? 'Do Not Recommend' : recommendation}". Please explain the difference.</p>
+            <label htmlFor="conflict-explanation" className="block font-semibold">Why do they differ? *</label>
+            <textarea
+              id="conflict-explanation"
+              data-testid="conflict-explanation"
+              rows={2}
+              value={conflictExplanation}
+              onChange={(e) => setConflictExplanation(e.target.value)}
+              aria-invalid={!!explanationError}
+              aria-describedby="conflict-explanation-error"
+              className="w-full rounded-lg border border-amber-300 bg-white p-2 text-sm text-gray-900"
+            />
+            {explanationError && <p id="conflict-explanation-error" className="text-xs text-rose-700">{explanationError}</p>}
+          </div>
+        )}
+
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-700">
           <Button variant="ghost" type="button" onClick={onClose}>
             Cancel
@@ -145,6 +172,7 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
             type="submit"
             icon={ShieldCheck}
             isLoading={isSubmitting}
+            disabled={!!explanationError}
           >
             Submit Scorecard
           </Button>

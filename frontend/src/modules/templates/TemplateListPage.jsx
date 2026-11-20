@@ -119,17 +119,17 @@ export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) 
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-red/20 to-red-600/10 flex items-center justify-center">
                     <LayoutTemplate className="h-6 w-6 text-brand-red" />
                   </div>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => onEdit(activeTab, template.name)} className="p-2 text-slate-400 hover:text-brand-red bg-slate-50 dark:bg-slate-700 rounded-lg transition-colors">
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
+                    <button onClick={() => onEdit(activeTab, template.name)} aria-label={`Edit template ${template.name}`} title="Edit template" className="p-2 text-slate-400 hover:text-brand-red bg-slate-50 dark:bg-slate-700 rounded-lg transition-colors">
                       <Edit2 className="h-4 w-4" />
                     </button>
-                    <button onClick={() => handleDelete(template.name)} className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 dark:bg-slate-700 rounded-lg transition-colors">
+                    <button onClick={() => handleDelete(template.name)} aria-label={`Delete template ${template.name}`} title="Delete template" className="p-2 text-slate-400 hover:text-red-600 bg-slate-50 dark:bg-slate-700 rounded-lg transition-colors">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
                 
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1 truncate" title={template.title || template.name}>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1 line-clamp-2 break-words" title={template.title || template.name}>
                   {template.title || template.name}
                 </h3>
                 <p className="text-xs text-slate-400 font-mono mb-4">{template.name}</p>
@@ -151,7 +151,7 @@ export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) 
               </div>
               <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{activeTab}</span>
-                <button onClick={() => onEdit(activeTab, template.name)} className="text-sm font-semibold text-brand-red hover:text-red-700 flex items-center gap-1">
+                <button onClick={() => onEdit(activeTab, template.name)} aria-label={`Edit template ${template.name}`} title="Edit template" className="text-sm font-semibold text-brand-red hover:text-red-700 flex items-center gap-1 py-2 -my-2">
                   Manage tasks &rarr;
                 </button>
               </div>
