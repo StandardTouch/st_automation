@@ -69,13 +69,10 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
   ];
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto animate-fade-in pb-12">
+    <div className="space-y-8 max-w-6xl mx-auto pb-12">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="text-xs font-bold uppercase tracking-wider text-brand-red mb-1">
-            Staff Feedback
-          </div>
           <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-brand-black dark:text-slate-50 tracking-tight">
             Feedback Overview
           </h1>
@@ -112,11 +109,11 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Feedback */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-200/80 dark:border-slate-700/80 shadow-soft">
-          <div className="text-xs font-bold uppercase text-brand-grey">Total Feedback</div>
+          <div className="text-xs font-bold text-brand-grey">Total Feedback</div>
           <div className="text-3xl font-heading font-extrabold text-brand-black dark:text-slate-50 mt-2">
             {data?.total ?? 0}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 mt-2">
+          <div className="flex items-center gap-1.5 text-micro font-semibold text-emerald-600 mt-2">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>Active Submissions</span>
           </div>
@@ -124,11 +121,11 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
 
         {/* Positive Sentiment */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-200/80 dark:border-slate-700/80 shadow-soft">
-          <div className="text-xs font-bold uppercase text-brand-grey">Positive Experience</div>
+          <div className="text-xs font-bold text-brand-grey">Positive Experience</div>
           <div className="text-3xl font-heading font-extrabold text-emerald-600 mt-2">
             {data?.positive_percentage ?? 0}%
           </div>
-          <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 mt-2">
+          <div className="flex items-center gap-1 text-micro font-semibold text-emerald-600 mt-2">
             <Smile className="w-3.5 h-3.5" />
             <span>Rating 4 & 5 stars</span>
           </div>
@@ -136,11 +133,11 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
 
         {/* Needs Attention */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-200/80 dark:border-slate-700/80 shadow-soft">
-          <div className="text-xs font-bold uppercase text-brand-grey">Needs Attention</div>
+          <div className="text-xs font-bold text-brand-grey">Needs Attention</div>
           <div className="text-3xl font-heading font-extrabold text-rose-600 mt-2">
             {data?.needs_attention_percentage ?? 0}%
           </div>
-          <div className="flex items-center gap-1 text-[11px] font-semibold text-rose-600 mt-2">
+          <div className="flex items-center gap-1 text-micro font-semibold text-rose-600 mt-2">
             <AlertTriangle className="w-3.5 h-3.5" />
             <span>Rating 1 & 2 stars</span>
           </div>
@@ -148,11 +145,11 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
 
         {/* Anonymous Percentage */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-200/80 dark:border-slate-700/80 shadow-soft">
-          <div className="text-xs font-bold uppercase text-brand-grey">Anonymous Share</div>
+          <div className="text-xs font-bold text-brand-grey">Anonymous Share</div>
           <div className="text-3xl font-heading font-extrabold text-brand-red mt-2">
             {data?.anonymous_percentage ?? 100}%
           </div>
-          <div className="flex items-center gap-1 text-[11px] font-semibold text-brand-grey mt-2">
+          <div className="flex items-center gap-1 text-micro font-semibold text-brand-grey mt-2">
             <ShieldCheck className="w-3.5 h-3.5 text-brand-red" />
             <span>Confidential submissions</span>
           </div>
@@ -220,14 +217,14 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
                 const heightPercent = Math.max(Math.round((t.count / maxCount) * 100), 12);
                 return (
                   <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                    <span className="text-[10px] font-bold text-brand-red opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-micro font-bold text-brand-red opacity-0 group-hover:opacity-100 transition-opacity">
                       {t.count}
                     </span>
                     <div
-                      className="w-full max-w-[32px] bg-gradient-to-t from-brand-red to-rose-400 rounded-t-lg transition-all duration-300 group-hover:brightness-110 shadow-sm"
+                      className="w-full max-w-[32px] bg-brand-red rounded-t-lg transition-all duration-300 group-hover:brightness-110 shadow-sm"
                       style={{ height: `${heightPercent}%` }}
                     />
-                    <span className="text-[10px] font-semibold text-brand-grey truncate max-w-[48px]">
+                    <span className="text-micro font-semibold text-brand-grey truncate max-w-[48px]">
                       {t.period}
                     </span>
                   </div>
@@ -240,7 +237,7 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
             </div>
           )}
 
-          <div className="text-[11px] text-brand-grey flex items-center justify-between pt-2">
+          <div className="text-micro text-brand-grey flex items-center justify-between pt-2">
             <span>Aggregated by submission periods</span>
             <span className="text-brand-red font-semibold">Continuous Influx</span>
           </div>
@@ -258,7 +255,7 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50/80 dark:bg-slate-900/60 text-[11px] font-bold uppercase tracking-wider text-brand-grey border-b border-gray-100 dark:border-slate-700">
+            <thead className="bg-gray-50/80 dark:bg-slate-900/60 text-micro font-bold text-brand-grey border-b border-gray-100 dark:border-slate-700">
               <tr>
                 <th className="px-6 py-3.5">Date</th>
                 <th className="px-6 py-3.5">Category</th>
@@ -288,7 +285,7 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
                     </td>
                     <td className="px-6 py-4 text-xs text-brand-grey whitespace-nowrap">
                       {item.is_anonymous ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500">
+                        <span className="inline-flex items-center gap-1 text-micro font-semibold text-gray-500">
                           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                           Anonymous
                         </span>
@@ -344,8 +341,8 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
 
       {/* Detail Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-xl">
             <div className="flex items-start justify-between">
               <div>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusBadge(selectedItem.status)}`}>
@@ -370,11 +367,11 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700">
                 <div>
-                  <div className="text-[11px] font-bold uppercase text-brand-grey">Category</div>
+                  <div className="text-micro font-bold text-brand-grey">Category</div>
                   <div className="font-semibold text-brand-black dark:text-slate-200">{selectedItem.feedback_type}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] font-bold uppercase text-brand-grey">Submitter</div>
+                  <div className="text-micro font-bold text-brand-grey">Submitter</div>
                   <div className="font-semibold text-brand-black dark:text-slate-200">
                     {selectedItem.is_anonymous ? 'Anonymous' : (selectedItem.employee_name || 'Staff')}
                   </div>
@@ -382,7 +379,7 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
               </div>
 
               <div>
-                <div className="text-xs font-bold uppercase text-brand-grey mb-1.5">Feedback Content</div>
+                <div className="text-xs font-bold text-brand-grey mb-1.5">Feedback Content</div>
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/40 border border-gray-200 dark:border-slate-700/60 text-brand-black dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
                   {selectedItem.feedback}
                 </div>
@@ -390,7 +387,7 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
 
               {selectedItem.attachment && (
                 <div>
-                  <div className="text-xs font-bold uppercase text-brand-grey mb-1">Attachment</div>
+                  <div className="text-xs font-bold text-brand-grey mb-1">Attachment</div>
                   <a
                     href={selectedItem.attachment}
                     target="_blank"
@@ -412,7 +409,7 @@ export function FeedbackOverviewAdminView({ selectedCompany }) {
                       onClick={() => handleStatusChange(selectedItem.name, st)}
                       className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
                         selectedItem.status === st
-                          ? 'bg-brand-red text-white shadow-sm'
+                          ? 'bg-accent text-white shadow-sm'
                           : 'bg-gray-100 dark:bg-slate-700 text-brand-grey hover:bg-gray-200'
                       }`}
                     >

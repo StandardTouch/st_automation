@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { FEATURES } from './config/features';
 import { ToastProvider, useToast } from './components/common/Toast';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopHeader } from './components/layout/TopHeader';
@@ -54,6 +55,7 @@ import InterviewFeedback from './pages/InterviewFeedback';
 
 // Feedback Module
 import { FeedbackPortal } from './modules/feedback/FeedbackPortal';
+import { confirmAction, ConfirmHost } from './components/common/ConfirmDialog';
 
 export function AppContent() {
   const { addToast } = useToast();
@@ -105,6 +107,12 @@ export function AppContent() {
 
   // Modal States
   const [activeApplicant, setActiveApplicant] = useState(null);
+  // The candidate panel belongs to the screen that opened it: leaving closes it.
+  const closePanelOnTab = React.useRef(null);
+  useEffect(() => {
+    if (closePanelOnTab.current !== null && closePanelOnTab.current !== activeTab) setActiveApplicant(null);
+    closePanelOnTab.current = activeTab;
+  }, [activeTab]);
   const [openInSchedulingMode, setOpenInSchedulingMode] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isNewJobOpeningOpen, setIsNewJobOpeningOpen] = useState(false);
@@ -236,7 +244,7 @@ export function AppContent() {
       const [sumRes, slipsRes, loansRes, structuresRes] = await Promise.all([
         payrollApi.getSummary(selectedCompany, month, year),
         payrollApi.getSalarySlips(selectedCompany, month, year),
-        payrollApi.getActiveLoans(selectedCompany),
+        FEATURES.loans ? payrollApi.getActiveLoans(selectedCompany) : Promise.resolve({ data: [] }),
         payrollApi.getRecentSalaryStructureAssignments(selectedCompany),
       ]);
       setPayrollSummary(sumRes.data);
@@ -306,7 +314,7 @@ export function AppContent() {
   const VALID_TABS = [
     'recruitment-pipeline', 'job-openings', 'my-interviews', 'offer-letters',
     'onboarding-pipeline', 'exit-pipeline', 'payroll-command', 'run-payroll',
-    'loans', 'salary-structures', 'salary-slips', 'staff-feedback', 'my-feedback', 'feedback-analytics',
+    ...(FEATURES.loans ? ['loans'] : []), 'salary-structures', 'salary-slips', 'staff-feedback', 'my-feedback', 'feedback-analytics',
     'templates', 'diagnostics',
   ];
   const hashTab = () => {
@@ -513,7 +521,7 @@ export function AppContent() {
   };
 
   const handleDeleteJobOpening = async (jobName) => {
-    if (!window.confirm('Are you sure you want to delete this job opening?')) return;
+    if (!(await confirmAction({ title: 'Delete job opening?', message: 'This job opening will be deleted. Candidates already linked to it stay in the pipeline.', confirmLabel: 'Delete job opening', tone: 'danger' }))) return;
     try {
       await recruitmentApi.deleteJobOpening(jobName);
       addToast('Job Opening deleted successfully', 'success');
@@ -654,6 +662,7 @@ export function AppContent() {
           activeTab={activeTab}
         />
 
+        <ConfirmHost />
         <CommandPalette
           userProfile={userProfile}
           onNavigate={(tab) => { setActiveTab(tab); setIsMobileOpen(false); }}
@@ -662,13 +671,13 @@ export function AppContent() {
               ? [{ label: 'Add Candidate', run: () => setIsQuickAddOpen(true) }] : []),
             ...((userProfile?.is_hr_admin || userProfile?.is_system_manager) ? [
               { label: 'Quick Incentive', run: () => setIsQuickIncentiveOpen(true) },
-              { label: 'New Loan Application', run: () => setIsLoanWizardOpen(true) },
+              ...(FEATURES.loans ? [{ label: 'New Loan Application', run: () => setIsLoanWizardOpen(true) }] : []),
             ] : []),
           ]}
         />
 
         {/* View Canvas */}
-        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto animate-fade-in">
+        <main className="flex-1 p-4 sm:p-6 xl:p-8 max-w-[1680px] w-full mx-auto">
           <h1 className="sr-only">Standard Touch HR Operations</h1>
           {notFoundHash && (
             <div role="alert" data-testid="route-not-found" className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
@@ -799,7 +808,7 @@ export function AppContent() {
               onRunPayroll={() => setActiveTab('run-payroll')}
               onQuickIncentive={() => setIsQuickIncentiveOpen(true)}
               onBulkIncentive={() => setIsBulkIncentiveOpen(true)}
-              onNewLoan={() => setIsLoanWizardOpen(true)}
+              onNewLoan={FEATURES.loans ? () => setIsLoanWizardOpen(true) : undefined}
               onViewSalarySlips={() => setActiveTab('salary-slips')}
               onAssignStructures={() => setActiveTab('salary-structures')}
               onViewReadiness={() => setActiveTab('diagnostics')}
@@ -822,7 +831,7 @@ export function AppContent() {
             />
           )}
 
-          {activeTab === 'loans' && (
+          {FEATURES.loans && activeTab === 'loans' && (
             <ActiveLoansView
               onLaunchLoanWizard={() => setIsLoanWizardOpen(true)}
               company={selectedCompany}
@@ -949,13 +958,13 @@ export function AppContent() {
         isSubmitting={isActionLoading}
       />
 
-      <LoanApplicationWizard
+      {FEATURES.loans && <LoanApplicationWizard
         isOpen={isLoanWizardOpen}
         onClose={() => setIsLoanWizardOpen(false)}
         onCreateLoan={handleCreateLoan}
         onDisburseLoan={handleDisburseOnly}
         isSubmitting={isActionLoading}
-      />
+      />}
 
       <StartOnboardingModal
         isOpen={isStartOnboardingOpen}

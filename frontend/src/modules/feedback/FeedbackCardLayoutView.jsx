@@ -45,18 +45,14 @@ export function FeedbackCardLayoutView({ selectedCompany, userProfile, onSuccess
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
       {/* Top Banner with Background Cover */}
       <div className="relative overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 p-8 sm:p-12 text-white shadow-xl">
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-transparent z-10" />
-        <div className="absolute -right-10 -bottom-10 w-96 h-96 bg-brand-red/20 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-20 max-w-xl space-y-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand-red">
-            STAFF FEEDBACK
-          </span>
           <h1 className="text-3xl sm:text-4xl font-heading font-extrabold tracking-tight">
-            Let's Build a Better Workplace Together
+            Help us improve how we work
           </h1>
           <p className="text-sm sm:text-base text-gray-300">
             Your feedback helps us improve our processes, people, and workplace culture.
@@ -91,13 +87,13 @@ export function FeedbackCardLayoutView({ selectedCompany, userProfile, onSuccess
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer ${
                       isSelected
-                        ? 'border-brand-red bg-red-50/50 dark:bg-red-950/30 text-brand-red shadow-md shadow-glow-red/30'
+                        ? 'border-brand-red bg-red-50/50 dark:bg-red-950/30 text-brand-red shadow-md /30'
                         : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/40 text-brand-grey hover:border-gray-300 dark:hover:border-slate-600'
                     }`}
                   >
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
                       isSelected
-                        ? 'bg-brand-red text-white'
+                        ? 'bg-accent text-white'
                         : 'bg-gray-100 dark:bg-slate-800 text-brand-grey group-hover:text-brand-red'
                     }`}>
                       <Icon className="w-5 h-5" />
@@ -158,7 +154,7 @@ export function FeedbackCardLayoutView({ selectedCompany, userProfile, onSuccess
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               placeholder="Tell us what's on your mind..."
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-brand-black dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red transition-all text-sm leading-relaxed"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-brand-black dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-accent transition-all text-sm leading-relaxed"
               required
             />
           </div>
@@ -184,7 +180,7 @@ export function FeedbackCardLayoutView({ selectedCompany, userProfile, onSuccess
               size="md"
               icon={Send}
               isLoading={isSubmitting}
-              className="w-full sm:w-auto shadow-md shadow-glow-red"
+              className="w-full sm:w-auto shadow-md "
             >
               Submit Feedback
             </Button>

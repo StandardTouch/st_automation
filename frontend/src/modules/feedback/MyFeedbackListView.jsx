@@ -63,11 +63,11 @@ export function MyFeedbackListView({ onNewFeedback }) {
   const filterTabs = ['All', 'Open', 'In Review', 'Resolved'];
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-fade-in pb-12">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="text-xs font-bold uppercase tracking-wider text-brand-red mb-1">
+          <div className="text-xs font-bold text-brand-red mb-1">
             My Submissions
           </div>
           <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-brand-black dark:text-slate-50 tracking-tight">
@@ -112,7 +112,7 @@ export function MyFeedbackListView({ onNewFeedback }) {
               onClick={() => setSelectedStatus(tab)}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                 isActive
-                  ? 'bg-brand-red text-white shadow-md shadow-glow-red'
+                  ? 'bg-accent text-white shadow-md '
                   : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-brand-grey hover:text-brand-black dark:hover:text-white'
               }`}
             >
@@ -150,7 +150,7 @@ export function MyFeedbackListView({ onNewFeedback }) {
               <div
                 key={item.name}
                 onClick={() => setSelectedItem(item)}
-                className="group bg-white dark:bg-slate-800 rounded-2xl border border-gray-200/80 dark:border-slate-700/80 p-5 hover:border-brand-red/40 hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                className="group bg-white dark:bg-slate-800 rounded-2xl border border-gray-200/80 dark:border-slate-700/80 p-5 hover:border-accent/40 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               >
                 <div className="flex items-start gap-4 flex-1 min-w-0 w-full max-w-full">
                   <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/60 flex items-center justify-center text-brand-red shrink-0 group-hover:scale-105 transition-transform">
@@ -174,7 +174,7 @@ export function MyFeedbackListView({ onNewFeedback }) {
                       {decodeEntities(item.feedback)}
                     </p>
 
-                    <div className="flex items-center gap-3 pt-1 text-[11px] text-brand-grey">
+                    <div className="flex items-center gap-3 pt-1 text-micro text-brand-grey">
                       <span className="font-medium text-brand-red">{item.feedback_type}</span>
                       <span>•</span>
                       <div className="flex items-center gap-1">
@@ -204,8 +204,8 @@ export function MyFeedbackListView({ onNewFeedback }) {
 
       {/* Feedback Detail Modal */}
       {selectedItem && (
-        <DialogA11y onClose={() => setSelectedItem(null)}><div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div role="dialog" aria-modal="true" aria-label="Feedback details" className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-2xl max-h-[calc(100vh-2rem)] overflow-y-auto">
+        <DialogA11y onClose={() => setSelectedItem(null)}><div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fade-in">
+          <div role="dialog" aria-modal="true" aria-label="Feedback details" className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 max-w-lg w-full p-6 sm:p-8 space-y-6 shadow-xl max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusBadge(selectedItem.status)}`}>
@@ -230,11 +230,11 @@ export function MyFeedbackListView({ onNewFeedback }) {
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700">
                 <div>
-                  <div className="text-[11px] font-bold uppercase text-brand-grey">Category</div>
+                  <div className="text-micro font-bold text-brand-grey">Category</div>
                   <div className="font-semibold text-brand-black dark:text-slate-200">{selectedItem.feedback_type}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] font-bold uppercase text-brand-grey">Rating</div>
+                  <div className="text-micro font-bold text-brand-grey">Rating</div>
                   <div className="flex items-center gap-1 font-semibold text-amber-500">
                     <Star className="w-3.5 h-3.5 fill-amber-400" />
                     <span>{selectedItem.rating} / 5</span>
@@ -243,7 +243,7 @@ export function MyFeedbackListView({ onNewFeedback }) {
               </div>
 
               <div>
-                <div className="text-xs font-bold uppercase text-brand-grey mb-1.5">Feedback Content</div>
+                <div className="text-xs font-bold text-brand-grey mb-1.5">Feedback Content</div>
                 <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/40 border border-gray-200 dark:border-slate-700/60 text-brand-black dark:text-slate-100 leading-relaxed whitespace-pre-wrap">
                   {decodeEntities(selectedItem.feedback)}
                 </div>
@@ -251,7 +251,7 @@ export function MyFeedbackListView({ onNewFeedback }) {
 
               {selectedItem.attachment && (
                 <div>
-                  <div className="text-xs font-bold uppercase text-brand-grey mb-1">Attachment</div>
+                  <div className="text-xs font-bold text-brand-grey mb-1">Attachment</div>
                   <a
                     href={selectedItem.attachment}
                     target="_blank"

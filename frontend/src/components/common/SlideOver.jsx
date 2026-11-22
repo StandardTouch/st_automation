@@ -24,16 +24,16 @@ export function SlideOver({ isOpen, onClose, title, subtitle, children, width = 
     <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-black/60 transition-opacity"
         onClick={onClose} 
       />
 
       <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
         <div 
-          className={`w-screen ${width} transform bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out animate-fade-in`}
+          className={`w-screen ${width} transform bg-white dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 shadow-xl flex flex-col transition-transform duration-300 ease-in-out animate-fade-in`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 backdrop-blur-md">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800/80 ">
             <div>
               <h2 className="text-xl font-bold text-brand-black dark:text-slate-50 tracking-tight">{title}</h2>
               {subtitle && <p className="text-sm text-brand-grey mt-0.5">{subtitle}</p>}

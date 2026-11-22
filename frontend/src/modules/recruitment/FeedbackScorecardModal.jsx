@@ -5,10 +5,10 @@ import { Button } from '../../components/common/Button';
 import { ratingConflict, conflictExplanationError } from '../../utils/feedbackRules';
 
 export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFeedback, isSubmitting }) {
-  const [rating, setRating] = useState(4);
-  const [recommendation, setRecommendation] = useState('Pass');
-  const [techRating, setTechRating] = useState(4);
-  const [commRating, setCommRating] = useState(4);
+  const [rating, setRating] = useState(0);
+  const [recommendation, setRecommendation] = useState('');
+  const [techRating, setTechRating] = useState(0);
+  const [commRating, setCommRating] = useState(0);
   const [comments, setComments] = useState('');
   const [conflictExplanation, setConflictExplanation] = useState('');
 
@@ -23,8 +23,8 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
     e.preventDefault();
     const scorecard = {
       overall_rating: rating,
-      tech_rating: techRating,
-      comm_rating: commRating,
+      tech_rating: techRating || undefined,
+      comm_rating: commRating || undefined,
     };
     if (conflictExplanationError(rating, recommendation, conflictExplanation)) return;
     onSubmitFeedback(interview.interview_id, rating, recommendation, comments, scorecard, ratingConflict(rating, recommendation) ? conflictExplanation.trim() : undefined);
@@ -32,7 +32,7 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
 
   const recOptions = [
     { id: 'Strong Hire', label: 'Strong Hire', color: 'bg-emerald-600 border-emerald-500' },
-    { id: 'Pass', label: 'Pass / Recommended', color: 'bg-brand-red border-brand-red' },
+    { id: 'Pass', label: 'Pass / Recommended', color: 'bg-accent border-accent' },
     { id: 'Hold', label: 'Hold / Need Another Round', color: 'bg-amber-600 border-amber-500' },
     { id: 'Fail', label: 'Do Not Recommend', color: 'bg-rose-600 border-rose-500' },
   ];
@@ -48,7 +48,7 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Overall Rating Stars */}
         <div>
-          <label className="block text-sm font-bold uppercase tracking-wider text-brand-grey mb-2">
+          <label className="block text-sm font-bold text-brand-grey mb-2">
             Overall Rating (1 to 5 Stars) *
           </label>
           <div className="flex items-center gap-2">
@@ -69,13 +69,13 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
                 />
               </button>
             ))}
-            <span className="ml-3 text-sm font-heading font-bold text-amber-400">{rating} / 5 Stars</span>
+            <span className="ml-3 text-sm font-heading font-bold text-amber-400">{rating ? `${rating} / 5 Stars` : 'Choose a rating'}</span>
           </div>
         </div>
 
         {/* Recommendation Radios */}
         <div>
-          <label className="block text-sm font-bold uppercase tracking-wider text-brand-grey mb-2">
+          <label className="block text-sm font-bold text-brand-grey mb-2">
             Hiring Recommendation *
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -86,7 +86,7 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
                 onClick={() => setRecommendation(opt.id)}
                 className={`p-3 rounded-xl border text-sm font-bold text-left transition-all flex items-center justify-between ${
                   recommendation === opt.id
-                    ? `${opt.color} text-brand-black dark:text-slate-50 shadow-lg`
+                    ? `${opt.color} text-brand-black dark:text-slate-50 shadow-md`
                     : 'bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-slate-700 text-brand-grey hover:text-brand-black dark:text-slate-50'
                 }`}
               >
@@ -104,8 +104,9 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
             <select
               value={techRating}
               onChange={(e) => setTechRating(Number(e.target.value))}
-              className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+              className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
             >
+              <option value={0}>Not rated</option>
               <option value={5}>5 - Exceptional</option>
               <option value={4}>4 - Above Average</option>
               <option value={3}>3 - Meets Standard</option>
@@ -119,8 +120,9 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
             <select
               value={commRating}
               onChange={(e) => setCommRating(Number(e.target.value))}
-              className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+              className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
             >
+              <option value={0}>Not rated</option>
               <option value={5}>5 - Excellent</option>
               <option value={4}>4 - Good</option>
               <option value={3}>3 - Acceptable</option>
@@ -132,7 +134,7 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
 
         {/* Notes / Feedback */}
         <div>
-          <label className="block text-sm font-bold uppercase tracking-wider text-brand-grey mb-1.5">
+          <label className="block text-sm font-bold text-brand-grey mb-1.5">
             Key Feedback & Evaluation Notes *
           </label>
           <textarea
@@ -141,7 +143,7 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
             rows={3}
             value={comments}
             onChange={(e) => setComments(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -168,11 +170,11 @@ export function FeedbackScorecardModal({ isOpen, onClose, interview, onSubmitFee
             Cancel
           </Button>
           <Button
-            variant="success"
+            variant="primary"
             type="submit"
             icon={ShieldCheck}
             isLoading={isSubmitting}
-            disabled={!!explanationError}
+            disabled={!rating || !recommendation || !!explanationError}
           >
             Submit Scorecard
           </Button>

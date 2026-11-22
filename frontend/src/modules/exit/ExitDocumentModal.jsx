@@ -59,12 +59,12 @@ export default function ExitDocumentModal({ isOpen, onClose, separation, taskNam
 
   return (
     <DialogA11y onClose={onClose}>
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div role="dialog" aria-modal="true" aria-label="Exit documents" className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 ">
+      <div role="dialog" aria-modal="true" aria-label="Exit documents" className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg">
+            <div className="p-2 bg-gray-100 dark:bg-slate-800 text-accent rounded-lg">
               <Mail className="w-5 h-5" />
             </div>
             <div>
@@ -81,7 +81,7 @@ export default function ExitDocumentModal({ isOpen, onClose, separation, taskNam
         <div className="flex-1 overflow-auto p-6">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-4">
-              <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+              <Loader2 className="w-8 h-8 text-accent animate-spin" />
               <p className="text-sm text-slate-500">Generating document previews...</p>
             </div>
           ) : error ? (
@@ -121,19 +121,19 @@ export default function ExitDocumentModal({ isOpen, onClose, separation, taskNam
                 <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 mb-4">
                   <button
                     onClick={() => setActiveTab('summary')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'summary' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'summary' ? 'border-gray-200 dark:border-slate-700 text-accent' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Salary Slips ({previewData.salary_slips?.length || 0})
                   </button>
                   <button
                     onClick={() => setActiveTab('relieving')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'relieving' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'relieving' ? 'border-gray-200 dark:border-slate-700 text-accent' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Relieving Preview
                   </button>
                   <button
                     onClick={() => setActiveTab('experience')}
-                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'experience' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'experience' ? 'border-gray-200 dark:border-slate-700 text-accent' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Experience Preview
                   </button>
@@ -199,7 +199,7 @@ export default function ExitDocumentModal({ isOpen, onClose, separation, taskNam
           <button
             onClick={handleSend}
             disabled={isSending || !previewData?.personal_email}
-            className="flex items-center gap-2 px-6 py-2 text-sm font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2 text-sm font-bold text-white bg-accent rounded-lg hover:bg-accent-hover transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSending ? (
               <>

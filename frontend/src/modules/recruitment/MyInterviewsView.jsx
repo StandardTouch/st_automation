@@ -1,15 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Calendar, Clock, FileText, CheckCircle2, Star, UserCheck, MessageSquare } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { formatDateTime } from '../../api/client';
 
-export function MyInterviewsView({ interviews = [], onOpenFeedback, onOpenCandidate, onScheduleAdHoc, isLoading }) {
+export function MyInterviewsView({ interviews: allInterviews = [], onOpenFeedback, onOpenCandidate, onScheduleAdHoc, isLoading }) {
+  const [filter, setFilter] = useState('all');
+  const isDone = (i) => ['Completed', 'Cleared', 'Rejected', 'Under Review'].includes(i.status);
+  const matches = { all: () => true, pending: (i) => !isDone(i), done: isDone };
+  const options = [
+    { id: 'all', label: 'All' },
+    { id: 'pending', label: 'Needs feedback' },
+    { id: 'done', label: 'Feedback in' },
+  ];
+  const interviews = allInterviews.filter(matches[filter]);
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Scheduled Interviews</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Scheduled Interviews</h2>
           <p className="text-sm text-brand-grey">View upcoming candidates, review resumes inline, and submit 1-click scorecards.</p>
         </div>
         {onScheduleAdHoc && (
@@ -22,17 +31,35 @@ export function MyInterviewsView({ interviews = [], onOpenFeedback, onOpenCandid
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter interviews">
+        {options.map((o) => {
+          const on = filter === o.id;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setFilter(o.id)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label font-semibold transition-colors ${on ? 'border-accent bg-accent-soft text-accent-hover dark:bg-accent/20 dark:text-red-100' : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:border-gray-400 dark:hover:border-slate-500'}`}
+            >
+              {o.label}
+              <span className="font-bold">{allInterviews.filter(matches[o.id]).length}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
         {interviews.length === 0 ? (
           <div className="col-span-full py-12 text-center border border-dashed border-gray-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-800/40">
             <Calendar className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-brand-grey">No scheduled interviews assigned</p>
+            <p className="text-sm font-semibold text-brand-grey">{allInterviews.length === 0 ? 'No scheduled interviews assigned' : 'No interviews match this filter.'}</p>
           </div>
         ) : (
           interviews.map((item) => (
             <div
               key={item.interview_id}
-              className="glass-panel rounded-2xl p-5 border border-gray-200 dark:border-slate-700 space-y-4 hover:border-brand-red/40 transition-all"
+              className="glass-panel rounded-2xl p-5 border border-gray-200 dark:border-slate-700 space-y-4 hover:border-accent/40 transition-all"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

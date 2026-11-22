@@ -149,11 +149,11 @@ END:VCALENDAR`;
 
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-brand-red to-red-700 flex items-center justify-center shadow-lg shadow-glow-red mx-auto">
+          <div className="h-10 w-10 rounded-lg bg-brand-red flex items-center justify-center mx-auto">
             <Sparkles className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Standard Touch</h1>
-          <p className="text-sm font-bold text-brand-red uppercase tracking-widest">Candidate Interview Scheduler</p>
+          <p className="text-sm font-bold text-brand-red">Candidate Interview Scheduler</p>
         </div>
 
         {/* Error Card */}
@@ -167,13 +167,13 @@ END:VCALENDAR`;
 
         {/* Booking Confirmed State */}
         {bookingSuccess ? (
-          <div className="glass-panel border-emerald-200 bg-emerald-50 rounded-3xl p-8 text-center space-y-6 animate-fade-in shadow-2xl">
+          <div className="glass-panel border-emerald-200 bg-emerald-50 rounded-3xl p-8 text-center space-y-6 animate-fade-in shadow-xl">
             <div className="h-16 w-16 rounded-full bg-emerald-100 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-glow-emerald">
               <CheckCircle2 className="h-8 w-8" />
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50">Interview Confirmed!</h2>
+              <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50">Interview Confirmed!</h2>
               <p className="text-sm text-emerald-700">
                 We're excited to speak with you, <span className="font-bold text-brand-black dark:text-slate-50">{bookingSuccess.applicant_name}</span>.
               </p>
@@ -195,7 +195,7 @@ END:VCALENDAR`;
           </div>
         ) : slotData && slotData.days ? (
           /* Slot Selection Wizard */
-          <div className="glass-panel rounded-3xl p-6 sm:p-8 border space-y-6 shadow-2xl">
+          <div className="glass-panel rounded-3xl p-6 sm:p-8 border space-y-6 shadow-xl">
             {/* Candidate Welcome Banner */}
             <div className="border-b border-gray-200 dark:border-slate-700 pb-4">
               <h2 className="text-xl font-bold text-brand-black dark:text-slate-50">
@@ -208,7 +208,7 @@ END:VCALENDAR`;
 
             {/* Date Tabs */}
             <div>
-              <label className="block text-sm font-bold uppercase tracking-wider text-brand-grey mb-2">
+              <label className="block text-sm font-bold text-brand-grey mb-2">
                 1. Select Date
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -222,12 +222,12 @@ END:VCALENDAR`;
                     }}
                     className={`p-3 rounded-2xl border text-center transition-all ${
                       selectedDateIndex === idx
-                        ? 'bg-brand-red border-brand-red text-brand-black dark:text-slate-50 shadow-lg shadow-glow-red'
+                        ? 'bg-accent border-accent text-brand-black dark:text-slate-50 shadow-md '
                         : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-brand-grey hover:text-brand-black dark:text-slate-50 hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-900'
                     }`}
                   >
                     <span className="text-sm font-bold block">{day.date_formatted.split(',')[0]}</span>
-                    <span className="text-[13px] opacity-80 block">{day.date_formatted.split(',')[1]}</span>
+                    <span className="text-label opacity-80 block">{day.date_formatted.split(',')[1]}</span>
                   </button>
                 ))}
               </div>
@@ -235,7 +235,7 @@ END:VCALENDAR`;
 
             {/* Time Slot Buttons */}
             <div>
-              <label className="block text-sm font-bold uppercase tracking-wider text-brand-grey mb-2">
+              <label className="block text-sm font-bold text-brand-grey mb-2">
                 2. Select Available Time
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -249,7 +249,7 @@ END:VCALENDAR`;
                       onClick={() => setSelectedSlot(slot)}
                       className={`py-3 px-2 rounded-xl border text-sm font-heading font-bold transition-all flex items-center justify-center gap-1.5 ${
                         isSelected
-                          ? 'bg-emerald-600 border-emerald-500 text-brand-black dark:text-slate-50 shadow-lg shadow-emerald-600/30 scale-[1.02]'
+                          ? 'bg-emerald-600 border-emerald-500 text-brand-black dark:text-slate-50 shadow-md scale-[1.02]'
                           : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-700 hover:text-brand-black dark:text-slate-50 hover:border-gray-300 dark:border-slate-600'
                       }`}
                     >
@@ -264,7 +264,7 @@ END:VCALENDAR`;
             {/* Confirm Button */}
             <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
               <Button
-                variant="success"
+                variant="primary"
                 size="lg"
                 className="w-full shadow-glow-emerald"
                 disabled={!selectedSlot}
@@ -279,7 +279,7 @@ END:VCALENDAR`;
       </div>
 
       {/* Footer */}
-      <footer className="text-center text-[13px] text-slate-600 mt-8">
+      <footer className="text-center text-label text-slate-600 mt-8">
         Powered by Standard Touch HR Operations
       </footer>
     </div>

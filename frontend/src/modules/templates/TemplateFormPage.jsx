@@ -177,7 +177,7 @@ export function TemplateFormPage({ templateType, templateName, onBack }) {
 
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 shadow-xl space-y-4">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">You have unsaved changes</h3>
             <p className="text-sm text-slate-500 dark:text-slate-300">Your work is saved as a draft on this device, so you can come back to it. Do you want to leave now?</p>
             <div className="flex flex-wrap justify-end gap-2">
@@ -199,13 +199,13 @@ export function TemplateFormPage({ templateType, templateName, onBack }) {
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
               {templateName ? 'Edit Template' : 'New Template'}
             </h2>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">{templateType} • {templateName || 'Unsaved'}</p>
+            <p className="text-xs text-slate-500 font-medium">{templateType} • {templateName || 'Unsaved'}</p>
           </div>
         </div>
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2.5 bg-brand-red text-white font-bold rounded-xl hover:bg-red-700 transition-all shadow-sm disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-2.5 bg-accent text-white font-bold rounded-xl hover:bg-accent-hover transition-all shadow-sm disabled:opacity-50"
         >
           <Save className="h-4 w-4" />
           {isSaving ? 'Saving...' : 'Save Template'}

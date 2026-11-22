@@ -52,7 +52,7 @@ export function QuickIncentiveModal({ isOpen, onClose, onAddIncentive, isSubmitt
               placeholder="e.g. 5000"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-brand-red"
+              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-accent"
             />
           </div>
 
@@ -61,7 +61,7 @@ export function QuickIncentiveModal({ isOpen, onClose, onAddIncentive, isSubmitt
             <select
               value={formData.salary_component}
               onChange={(e) => setFormData({ ...formData, salary_component: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
             >
               <option value="Incentive">Incentive</option>
               <option value="Performance Bonus">Performance Bonus</option>
@@ -93,7 +93,7 @@ export function QuickIncentiveModal({ isOpen, onClose, onAddIncentive, isSubmitt
                 required
                 value={formData.from_date}
                 onChange={(e) => setFormData({ ...formData, from_date: e.target.value })}
-                className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
               />
             </div>
             <div>
@@ -102,7 +102,7 @@ export function QuickIncentiveModal({ isOpen, onClose, onAddIncentive, isSubmitt
                 type="date"
                 value={formData.to_date}
                 onChange={(e) => setFormData({ ...formData, to_date: e.target.value })}
-                className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
               />
             </div>
           </div>
@@ -113,7 +113,7 @@ export function QuickIncentiveModal({ isOpen, onClose, onAddIncentive, isSubmitt
               type="date"
               value={formData.payroll_date}
               onChange={(e) => setFormData({ ...formData, payroll_date: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
             />
           </div>
         )}
@@ -125,7 +125,7 @@ export function QuickIncentiveModal({ isOpen, onClose, onAddIncentive, isSubmitt
             placeholder="e.g. Q3 Sales Target Achievement"
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
           />
         </div>
 

@@ -126,7 +126,12 @@ describe('Feedback rating vs recommendation', () => {
   });
 
   it('does not ask for an explanation when rating and recommendation agree', async () => {
+    const user = userEvent.setup();
     renderWithToast(<FeedbackScorecardModal isOpen onClose={() => {}} interview={interview} onSubmitFeedback={vi.fn()} isSubmitting={false} />);
+    // Nothing is pre-selected: submit stays off until the reviewer chooses both.
+    expect(screen.getByRole('button', { name: /submit scorecard/i })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: '4 stars' }));
+    await user.click(screen.getByText('Pass / Recommended'));
     expect(screen.queryByTestId('rating-mismatch-warning')).toBeNull();
     expect(screen.getByRole('button', { name: /submit scorecard/i })).toBeEnabled();
   });

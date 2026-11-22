@@ -48,7 +48,7 @@ export function SelectCandidateModal({ isOpen, onClose, onSelect, company }) {
             placeholder="Search active candidates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red"
+            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:border-accent focus:ring-1 focus:ring-brand-red"
           />
         </div>
 
@@ -66,11 +66,11 @@ export function SelectCandidateModal({ isOpen, onClose, onSelect, company }) {
               <div 
                 key={c.name} 
                 onClick={() => onSelect(c.name)}
-                className="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand-red/40 hover:bg-red-50/10 cursor-pointer transition-all"
+                className="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-accent/40 hover:bg-red-50/10 cursor-pointer transition-all"
               >
                 <div>
                   <div className="text-sm font-bold text-gray-900 dark:text-slate-50">{c.applicant_name}</div>
-                  <div className="text-[12px] font-medium text-brand-red mt-0.5">{c.job_title}</div>
+                  <div className="text-caption font-medium text-brand-red mt-0.5">{c.job_title}</div>
                 </div>
                 <Button size="sm" variant="ghost">Select</Button>
               </div>

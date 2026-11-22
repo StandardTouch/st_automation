@@ -8,6 +8,18 @@
   }
 }
 
+/* Keyboard focus (WCAG 2.4.7): one visible ring for every interactive control.
+   Mouse clicks do not show it; keyboard Tab does. */
+@layer base {
+  :where(button, a, input, select, textarea, summary, [role='button'], [role='tab'], [tabindex]):focus-visible {
+    outline: 2px solid #c4161c;
+    outline-offset: 2px;
+  }
+}
+.dark :where(button, a, input, select, textarea, summary, [role='button'], [role='tab'], [tabindex]):focus-visible {
+  outline-color: #ff8a8e;
+}
+
 /* Custom modern scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
@@ -21,50 +33,25 @@
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.8);
+  background: rgba(130, 134, 142, 0.8);
 }
 
-/* Glassmorphism helpers for Light Theme */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
+/* Surfaces: flat panels with a 1px border. No blur, no lift, no coloured glow. */
+.glass-panel,
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.04);
-}
-
-.glass-card-hover {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass-card-hover:hover {
   background: #ffffff;
-  border-color: rgba(220, 38, 38, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.09);
 }
+.glass-card-hover { transition: border-color 0.15s ease, background-color 0.15s ease; }
+.glass-card-hover:hover { border-color: rgba(196, 22, 28, 0.55); }
 
-@media (prefers-color-scheme: dark) {
-  .glass-panel {
-    background: rgba(30, 41, 59, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+.dark .glass-panel,
+.dark .glass-card {
+    background: #1c1e22;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
-  .glass-card {
-    background: rgba(30, 41, 59, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.04);
-  }
-  .glass-card-hover:hover {
-    background: rgba(30, 41, 59, 0.95);
-    border-color: rgba(220, 38, 38, 0.5);
-    box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.3), 0 4px 10px -2px rgba(220, 38, 38, 0.2);
-  }
-}
+.dark .glass-card-hover:hover { border-color: rgba(255, 107, 112, 0.6); }
+
 
 /* Hide scrollbar for kanban board but allow scrolling */
 .hide-scrollbar::-webkit-scrollbar {
@@ -88,16 +75,58 @@
 /* Accessibility (WCAG 1.4.3): in the light theme the muted-grey and small red text
    tokens fall below 4.5:1 on white. Darker text-only overrides; dark theme and
    filled brand-red buttons are unchanged. */
-@media (prefers-color-scheme: light) {
-  .text-brand-grey { color: #5c5d60; }
-  .text-brand-red { color: #c4161c; }
-}
+:root:not(.dark) .text-brand-grey { color: #5c5d60; }
+:root:not(.dark) .text-brand-red { color: #c4161c; }
 
-@media (prefers-color-scheme: dark) {
-  .text-brand-grey { color: #a3a4a7; }
-  .text-brand-red { color: #ff5c61; }
-}
+
+.dark .text-brand-grey { color: #a3a4a7; }
+.dark .text-brand-red { color: #ff5c61; }
+
 
 /* White text on the brand red (#ED1D24) is 4.37:1; this 4.98:1 shade passes WCAG AA
    for normal text. Design decision: slightly darker filled red (needs sign-off). */
 .bg-brand-red { background-color: #dc1a21; }
+
+/* Action colour text (links, ghost buttons): AA on both themes. */
+:root:not(.dark) .text-accent { color: #c4161c; }
+
+.dark .text-accent { color: #ff6b70; }
+
+
+/* Dark theme: tinted status panels written for the light theme (bg-*-50) are
+   re-toned here so they read as quiet tints, not bright blocks on a dark page. */
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.12); }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+.dark .bg-rose-50,
+.dark .bg-red-50 { background-color: rgba(244, 63, 94, 0.12); }
+.dark .bg-cyan-50,
+.dark .bg-blue-50 { background-color: rgba(56, 189, 248, 0.12); }
+.dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.14); }
+.dark .text-emerald-700,
+.dark .text-emerald-800 { color: #6ee7b7; }
+.dark .text-amber-700,
+.dark .text-amber-800,
+.dark .text-amber-900 { color: #fcd34d; }
+.dark .text-rose-700,
+.dark .text-rose-800,
+.dark .text-red-700 { color: #fda4af; }
+.dark .text-cyan-700,
+.dark .text-blue-700 { color: #7dd3fc; }
+.dark .text-purple-700 { color: #d8b4fe; }
+.dark .text-emerald-900,
+.dark .text-green-800,
+.dark .text-green-900 { color: #a7f3d0; }
+.dark .text-rose-900,
+.dark .text-red-800,
+.dark .text-red-900 { color: #fecdd3; }
+.dark .text-cyan-900,
+.dark .text-blue-800,
+.dark .text-blue-900 { color: #bae6fd; }
+.dark .text-purple-800,
+.dark .text-purple-900 { color: #e9d5ff; }
+.dark .bg-amber-50\/70 { background-color: rgba(245, 158, 11, 0.12); }
+.dark .bg-emerald-50\/50 { background-color: rgba(16, 185, 129, 0.10); }
+
+
+/* Touch targets: text buttons are at least 32px tall. */
+main button[class*="px-"] { min-height: 32px; }

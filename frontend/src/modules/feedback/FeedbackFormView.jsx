@@ -80,7 +80,7 @@ export function FeedbackFormView({
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-12">
+    <div className="max-w-2xl mx-auto space-y-6 pb-12">
       {/* Back button */}
       <button
         onClick={onBack}
@@ -118,7 +118,7 @@ export function FeedbackFormView({
             <select
               value={feedbackType}
               onChange={(e) => setFeedbackType(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-brand-black dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red transition-all text-sm font-medium"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-brand-black dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-accent transition-all text-sm font-medium"
               required
             >
               {FEEDBACK_CATEGORIES.map((cat) => (
@@ -182,7 +182,7 @@ export function FeedbackFormView({
               value={feedbackText}
               onChange={(e) => setFeedbackText(e.target.value)}
               placeholder="Please share your thoughts, suggestions, or ideas..."
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-brand-black dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-brand-red transition-all text-sm leading-relaxed"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-brand-black dark:text-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-red/30 focus:border-accent transition-all text-sm leading-relaxed"
               required
             />
           </div>
@@ -220,7 +220,7 @@ export function FeedbackFormView({
             ) : (
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-200 dark:border-slate-700 hover:border-brand-red/50 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-gray-50/50 dark:bg-slate-900/40 hover:bg-red-50/30"
+                className="border-2 border-dashed border-gray-200 dark:border-slate-700 hover:border-accent/50 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-gray-50/50 dark:bg-slate-900/40 hover:bg-red-50/30"
               >
                 <div className="w-10 h-10 mx-auto rounded-xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 flex items-center justify-center text-brand-grey dark:text-slate-400 mb-2">
                   <UploadCloud className="w-5 h-5 text-brand-red" />
@@ -228,7 +228,7 @@ export function FeedbackFormView({
                 <p className="text-xs font-bold text-brand-black dark:text-slate-200">
                   {isUploading ? 'Uploading attachment...' : 'Click to upload or drag and drop'}
                 </p>
-                <p className="text-[11px] text-brand-grey mt-0.5">
+                <p className="text-micro text-brand-grey mt-0.5">
                   Images, PDF or Docs (Max size: 10MB)
                 </p>
               </div>
@@ -249,7 +249,7 @@ export function FeedbackFormView({
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 This feedback is anonymous
               </div>
-              <p className="text-[11px] text-brand-grey dark:text-slate-400 mt-0.5">
+              <p className="text-micro text-brand-grey dark:text-slate-400 mt-0.5">
                 {isAnonymous
                   ? "Your identity will not be shared with anyone. Your submission is 100% confidential."
                   : `Submitting as ${userProfile?.full_name || 'Logged-in user'} (${userProfile?.email || ''}).`}
@@ -274,7 +274,7 @@ export function FeedbackFormView({
               size="md"
               icon={Send}
               isLoading={isSubmitting}
-              className="shadow-md shadow-glow-red"
+              className="shadow-md "
             >
               Submit Feedback
             </Button>

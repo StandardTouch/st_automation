@@ -63,8 +63,8 @@ export default function InterviewFeedback() {
 
   if (status === 'success') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl p-10 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="h-9 w-9 text-emerald-600" />
           </div>
@@ -77,8 +77,8 @@ export default function InterviewFeedback() {
 
   if (status === 'error') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-rose-100 flex items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl p-10 max-w-md w-full text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl p-10 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="h-9 w-9 text-red-500" />
           </div>
@@ -91,18 +91,18 @@ export default function InterviewFeedback() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-xl w-full max-w-lg overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-white">
+        <div className="bg-brand-black p-8 text-white">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-white dark:bg-slate-800/20 rounded-xl flex items-center justify-center">
               <span className="text-xl">🎯</span>
             </div>
-            <span className="text-sm font-semibold text-indigo-200 uppercase tracking-wide">Standard Touch HR</span>
+            <span className="text-sm font-semibold text-gray-300 tracking-wide">Standard Touch HR</span>
           </div>
           <h1 className="text-2xl font-bold mt-3">Interview Feedback</h1>
-          <p className="text-indigo-200 text-sm mt-1">Your feedback helps us make the right hiring decisions. It will be recorded against your name in the HR system.</p>
+          <p className="text-gray-300 text-sm mt-1">Your feedback helps us make the right hiring decisions. It will be recorded against your name in the HR system.</p>
         </div>
 
         {/* Form */}
@@ -163,7 +163,7 @@ export default function InterviewFeedback() {
                   onClick={() => setRecommendation(option)}
                   className={`px-3 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
                     recommendation === option
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      ? 'border-accent bg-accent-soft text-accent-hover'
                       : 'border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:border-gray-400'
                   }`}
                 >
@@ -186,7 +186,7 @@ export default function InterviewFeedback() {
           <button
             type="submit"
             disabled={status === 'loading'}
-            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl disabled:opacity-60"
+            className="w-full bg-accent hover:bg-accent-hover text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-xl disabled:opacity-60"
           >
             {status === 'loading' ? (
               <>

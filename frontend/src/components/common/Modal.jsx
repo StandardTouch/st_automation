@@ -28,7 +28,7 @@ export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth = '
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 bg-black/70 transition-opacity" 
         onClick={closeOnBackdrop ? onClose : undefined} 
       />
 
@@ -38,7 +38,7 @@ export function Modal({ isOpen, onClose, title, subtitle, children, maxWidth = '
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
-          className={`w-full ${maxWidth} max-h-[85vh] flex flex-col transform rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-left align-middle shadow-2xl transition-all animate-fade-in`}
+          className={`w-full ${maxWidth} max-h-[85vh] flex flex-col transform rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-left align-middle shadow-xl transition-all animate-fade-in`}
         >
           {/* Header */}
           <div className="flex items-start justify-between p-6 pb-4 border-b border-gray-200 dark:border-slate-700/80 shrink-0">

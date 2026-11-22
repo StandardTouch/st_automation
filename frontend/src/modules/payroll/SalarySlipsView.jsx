@@ -87,7 +87,7 @@ export function SalarySlipsView({ slips = [], isLoading, month, year, onRefresh 
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Salary Slips</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Salary Slips</h2>
           <p className="text-sm text-brand-grey">
             Preview branded salary slips, verify net payout calculations, and deliver payslips.
           </p>
@@ -101,7 +101,7 @@ export function SalarySlipsView({ slips = [], isLoading, month, year, onRefresh 
             placeholder="Search employee name or ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold text-brand-black dark:text-slate-50 placeholder-slate-400 focus:outline-none focus:border-brand-red"
+            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold text-brand-black dark:text-slate-50 placeholder-slate-400 focus:outline-none focus:border-accent"
           />
         </div>
       </div>
@@ -111,7 +111,7 @@ export function SalarySlipsView({ slips = [], isLoading, month, year, onRefresh 
         <div role="region" aria-label="Salary slips table" tabIndex={0} className="overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey font-bold uppercase bg-gray-50 dark:bg-slate-900/60">
+              <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey font-bold bg-gray-50 dark:bg-slate-900/60">
                 <th className="py-3 px-4">Employee</th>
                 <th className="py-3 px-4">Designation</th>
                 <th className="py-3 px-4">Period</th>
@@ -135,12 +135,12 @@ export function SalarySlipsView({ slips = [], isLoading, month, year, onRefresh 
                   <tr key={slip.name} className="hover:bg-white dark:bg-slate-800/60 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-brand-black dark:text-slate-50 text-sm">{slip.employee_name}</div>
-                      <div className="text-[13px] text-brand-grey">{slip.employee}</div>
+                      <div className="text-label text-brand-grey">{slip.employee}</div>
                     </td>
                     <td className="py-3.5 px-4 text-gray-700 dark:text-slate-200">
                       {slip.designation || 'Staff'}
                     </td>
-                    <td className="py-3.5 px-4 text-brand-grey text-[13px]">
+                    <td className="py-3.5 px-4 text-brand-grey text-label">
                       {formatDate(slip.start_date)} - {formatDate(slip.end_date)}
                     </td>
                     <td className="py-3.5 px-4 text-gray-700 dark:text-slate-200 font-semibold">

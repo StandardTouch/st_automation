@@ -54,13 +54,13 @@ export const FEEDBACK_CATEGORIES = [
 
 export function FeedbackLandingView({ onStartForm, onCategorySelect }) {
   return (
-    <div className="space-y-10 animate-fade-in max-w-6xl mx-auto pb-12">
+    <div className="space-y-10 max-w-6xl mx-auto pb-12">
       {/* Hero Banner Section */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-red-50/30 to-rose-50/50 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-gray-200/80 dark:border-slate-700 p-8 sm:p-12 shadow-sm">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-slate-800 border border-gray-200/80 dark:border-slate-700 p-8 sm:p-12 shadow-sm">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-red-500/10 rounded-full pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-xl space-y-4 text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-red/10 border border-brand-red/20 text-brand-red text-xs font-bold uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-red/10 border border-brand-red/20 text-brand-red text-xs font-bold">
               <Sparkles className="w-3.5 h-3.5" />
               Staff Feedback
             </div>
@@ -79,7 +79,7 @@ export function FeedbackLandingView({ onStartForm, onCategorySelect }) {
                 size="lg"
                 icon={Send}
                 onClick={() => onStartForm()}
-                className="shadow-lg shadow-glow-red"
+                className="shadow-md "
               >
                 Submit Feedback
               </Button>
@@ -88,9 +88,9 @@ export function FeedbackLandingView({ onStartForm, onCategorySelect }) {
 
           {/* Decorative Illustration / Hero Badge */}
           <div className="relative shrink-0 flex items-center justify-center">
-            <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-full bg-gradient-to-tr from-brand-red/20 to-orange-400/20 flex items-center justify-center border border-brand-red/20 shadow-inner">
+            <div className="w-56 h-56 sm:w-64 sm:h-64 rounded-full bg-brand-red/10 flex items-center justify-center border border-brand-red/20">
               <div className="text-center p-6 space-y-2">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-red flex items-center justify-center shadow-lg shadow-glow-red text-white">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-brand-red flex items-center justify-center shadow-md  text-white">
                   <ShieldCheck className="w-9 h-9" />
                 </div>
                 <div className="font-bold text-sm text-brand-black dark:text-slate-50">100% Confidential</div>
@@ -117,7 +117,7 @@ export function FeedbackLandingView({ onStartForm, onCategorySelect }) {
               <div
                 key={cat.id}
                 onClick={() => onCategorySelect(cat.id)}
-                className="group relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200/90 dark:border-slate-700/80 shadow-soft hover:shadow-xl hover:border-brand-red/40 dark:hover:border-brand-red/50 transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                className="group relative bg-white dark:bg-slate-800 rounded-2xl p-6 border border-gray-200/90 dark:border-slate-700/80 shadow-soft hover:shadow-xl hover:border-accent/40 dark:hover:border-accent/50 transition-all duration-300 cursor-pointer flex flex-col justify-between"
               >
                 <div>
                   <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-100 dark:border-red-900/60 flex items-center justify-center text-brand-red group-hover:scale-110 group-hover:bg-brand-red group-hover:text-white transition-all duration-300 mb-4">
@@ -146,7 +146,7 @@ export function FeedbackLandingView({ onStartForm, onCategorySelect }) {
       </div>
 
       {/* Bottom Quick & Easy Action Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-red-500/10 via-rose-500/5 to-transparent border border-red-200/80 dark:border-red-900/40 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="rounded-2xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 dark:border-red-900/40 p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-brand-red/15 text-brand-red flex items-center justify-center shrink-0">
             <Sparkles className="w-6 h-6" />

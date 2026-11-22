@@ -120,7 +120,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
           </div>
           <button
             onClick={onStartOnboarding}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-brand-red rounded-xl hover:bg-red-700 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-accent rounded-xl hover:bg-accent-hover transition-colors shadow-sm"
           >
             <Plus className="h-4 w-4" /> Start Onboarding
           </button>
@@ -140,7 +140,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
             {showCompleted ? 'Completed onboardings will appear here.' : 'Start a new onboarding or onboard a candidate from the recruitment pipeline.'}
           </p>
           {!showCompleted && (
-            <button onClick={onStartOnboarding} className="px-5 py-2.5 text-sm font-bold text-white bg-brand-red rounded-xl hover:bg-red-700 transition-colors">
+            <button onClick={onStartOnboarding} className="px-5 py-2.5 text-sm font-bold text-white bg-accent rounded-xl hover:bg-accent-hover transition-colors">
               <Plus className="inline h-4 w-4 mr-1 -mt-0.5" /> Start Onboarding
             </button>
           )}
@@ -186,7 +186,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
                   <div className="flex items-center gap-3 min-w-[140px]">
                     <div className="flex-1 h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-700 ${ob.percent_complete >= 100 ? 'bg-green-500' : 'bg-brand-red'}`}
+                        className={`h-full rounded-full transition-all duration-700 ${ob.percent_complete >= 100 ? 'bg-green-500' : 'bg-accent'}`}
                         style={{ width: `${Math.min(ob.percent_complete, 100)}%` }}
                       />
                     </div>
@@ -221,7 +221,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
                           <Link2Off className="h-3.5 w-3.5" /> Revoke
                         </button>
                       )}
-                      <button onClick={() => handleResendLink(ob.employee)} disabled={isActionLoading} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-brand-red rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50">
+                      <button onClick={() => handleResendLink(ob.employee)} disabled={isActionLoading} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-accent rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50">
                         <Send className="h-3.5 w-3.5" /> {ob.token ? 'Resend' : 'Generate'} Link
                       </button>
                     </div>
@@ -285,7 +285,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
                                     className="hidden lg:block w-40 px-2.5 py-1.5 text-xs border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-red"
                                   />
                                   {assignInputs[task.name] && (
-                                    <button onClick={() => handleAssignTask(task.name)} disabled={isActionLoading} className="px-2.5 py-1.5 text-xs font-medium text-brand-red border border-brand-red rounded-lg hover:bg-brand-red hover:text-white transition-colors disabled:opacity-50">
+                                    <button onClick={() => handleAssignTask(task.name)} disabled={isActionLoading} className="px-2.5 py-1.5 text-xs font-medium text-brand-red border border-accent rounded-lg hover:bg-accent hover:text-white transition-colors disabled:opacity-50">
                                       Assign
                                     </button>
                                   )}
@@ -297,7 +297,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
                                   <button
                                     onClick={() => handleCompleteStage(ob.employee, task.name)}
                                     disabled={isActionLoading}
-                                    className="px-4 py-2 text-sm font-bold text-white bg-brand-red rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
+                                    className="px-4 py-2 text-sm font-bold text-white bg-accent rounded-lg hover:bg-accent-hover transition-colors shadow-sm disabled:opacity-50"
                                   >
                                     Mark Complete
                                   </button>
@@ -324,7 +324,7 @@ export function OnboardingPipelineView({ pipelineData, isLoading, onRefresh, onS
                                 className="flex-1 px-3 py-2 text-xs border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-brand-red"
                               />
                               {commentInputs[task.name] && (
-                                <button onClick={() => handleAddComment(task.name)} disabled={isActionLoading} className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-brand-red hover:bg-brand-red hover:text-white border border-brand-red rounded-lg transition-colors disabled:opacity-50">
+                                <button onClick={() => handleAddComment(task.name)} disabled={isActionLoading} className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-brand-red hover:bg-accent hover:text-white border border-accent rounded-lg transition-colors disabled:opacity-50">
                                   <MessageSquarePlus className="h-3.5 w-3.5" /> Add
                                 </button>
                               )}

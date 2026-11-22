@@ -117,8 +117,8 @@ export function CommandPalette({ userProfile, onNavigate, actions = [] }) {
   let lastGroup = null;
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-start justify-center pt-[12vh] px-4">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-      <div className="relative w-full max-w-xl rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-2xl overflow-hidden animate-fade-in">
+      <div className="fixed inset-0 bg-black/60 " onClick={() => setOpen(false)} />
+      <div className="relative w-full max-w-xl rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-xl overflow-hidden animate-fade-in">
         <div className="flex items-center gap-3 px-4 border-b border-gray-200 dark:border-slate-700">
           <Search className="h-4 w-4 text-brand-grey shrink-0" />
           <input
@@ -129,7 +129,7 @@ export function CommandPalette({ userProfile, onNavigate, actions = [] }) {
             placeholder="Search pages, actions, or anything on this page…"
             className="flex-1 bg-transparent py-4 text-sm text-brand-black dark:text-slate-50 focus:outline-none"
           />
-          <kbd className="text-[11px] font-bold text-brand-grey border border-gray-300 dark:border-slate-600 rounded px-1.5 py-0.5">Esc</kbd>
+          <kbd className="text-micro font-bold text-brand-grey border border-gray-300 dark:border-slate-600 rounded px-1.5 py-0.5">Esc</kbd>
         </div>
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto py-2">
           {results.length === 0 ? (
@@ -140,17 +140,17 @@ export function CommandPalette({ userProfile, onNavigate, actions = [] }) {
             const Icon = r.icon;
             return (
               <React.Fragment key={`${r.group}-${r.label}-${i}`}>
-                {showGroup && <div className="px-4 pt-2 pb-1 text-[12px] font-bold uppercase tracking-wider text-brand-grey">{r.group}</div>}
+                {showGroup && <div className="px-4 pt-2 pb-1 text-caption font-bold text-brand-grey">{r.group}</div>}
                 <button
                   type="button"
                   data-active={i === index}
                   onMouseEnter={() => setIndex(i)}
                   onClick={() => choose(r)}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm ${i === index ? 'bg-brand-red text-white' : 'text-brand-black dark:text-slate-100'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm ${i === index ? 'bg-accent text-white' : 'text-brand-black dark:text-slate-100'}`}
                 >
                   {Icon && <Icon className={`h-4 w-4 shrink-0 ${i === index ? 'text-white' : 'text-brand-grey'}`} />}
                   <span className="flex-1 truncate font-semibold">{r.label}</span>
-                  {r.hint && <span className={`text-[12px] truncate ${i === index ? 'text-white/80' : 'text-brand-grey'}`}>{r.hint}</span>}
+                  {r.hint && <span className={`text-caption truncate ${i === index ? 'text-white/80' : 'text-brand-grey'}`}>{r.hint}</span>}
                   {i === index && <CornerDownLeft className="h-3.5 w-3.5 shrink-0" />}
                 </button>
               </React.Fragment>

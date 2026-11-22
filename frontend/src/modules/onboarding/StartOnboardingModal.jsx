@@ -85,8 +85,8 @@ export function StartOnboardingModal({ isOpen, onClose, company, onSuccess }) {
   if (!isOpen) return null;
 
   return (
-    <DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Start Onboarding" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Start Onboarding" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
@@ -196,7 +196,7 @@ export function StartOnboardingModal({ isOpen, onClose, company, onSuccess }) {
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || !selectedEmployee}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-brand-red rounded-xl hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-accent rounded-xl hover:bg-accent-hover transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isSubmitting ? (
               <>

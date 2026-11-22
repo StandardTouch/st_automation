@@ -8,6 +8,7 @@ import { salaryStructureApi } from '../../api/salaryStructureApi';
 import { SalaryStructureFormModal } from './SalaryStructureFormModal';
 import { AssignSalaryStructureModal } from './AssignSalaryStructureModal';
 import { BulkAssignStructureModal } from './BulkAssignStructureModal';
+import { confirmAction } from '../../components/common/ConfirmDialog';
 
 const DOC_STATUS = { 0: ['Draft', 'warning'], 1: ['Submitted', 'success'], 2: ['Cancelled', 'danger'] };
 
@@ -43,7 +44,7 @@ export function SalaryStructureView({ company, onChanged }) {
   const refresh = () => { load(); onChanged?.(); };
 
   const removeStructure = async (name) => {
-    if (!window.confirm(`Delete Salary Structure "${name}"? Submitted structures are cancelled first.`)) return;
+    if (!(await confirmAction({ title: 'Delete salary structure?', message: `Delete "${name}"? Submitted structures are cancelled first.`, confirmLabel: 'Delete structure', tone: 'danger' }))) return;
     try {
       const res = await salaryStructureApi.deleteStructure(name);
       addToast(res.message, 'success');
@@ -54,7 +55,7 @@ export function SalaryStructureView({ company, onChanged }) {
   };
 
   const removeAssignment = async (name) => {
-    if (!window.confirm(`Remove assignment ${name}? It will be cancelled and deleted.`)) return;
+    if (!(await confirmAction({ title: 'Remove assignment?', message: `Assignment ${name} will be cancelled and deleted.`, confirmLabel: 'Remove assignment', tone: 'danger' }))) return;
     try {
       const res = await salaryStructureApi.deleteAssignment(name);
       addToast(res.message, 'success');
@@ -73,7 +74,7 @@ export function SalaryStructureView({ company, onChanged }) {
     <div className="space-y-6" id="salary-structure-section">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Salary Structures</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Salary Structures</h2>
           <p className="text-sm text-brand-grey">Create structures and see every assignment, synced live with ERPNext.</p>
         </div>
         <div className="flex gap-2">
@@ -89,7 +90,7 @@ export function SalaryStructureView({ company, onChanged }) {
             <button
               key={id}
               onClick={() => setTab(id)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${tab === id ? 'bg-brand-red text-white' : 'text-brand-grey hover:text-brand-black dark:hover:text-slate-50'}`}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors ${tab === id ? 'bg-accent text-white' : 'text-brand-grey hover:text-brand-black dark:hover:text-slate-50'}`}
             >
               {label}
             </button>
@@ -101,7 +102,7 @@ export function SalaryStructureView({ company, onChanged }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={tab === 'structures' ? 'Filter structures…' : 'Filter by employee or structure…'}
-            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-brand-red"
+            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-accent"
           />
         </div>
       </div>
@@ -119,7 +120,7 @@ export function SalaryStructureView({ company, onChanged }) {
           <div className="glass-panel rounded-2xl border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-[13px] font-bold uppercase tracking-wide text-brand-grey">
+                <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-label font-bold tracking-wide text-brand-grey">
                   <th className="px-4 py-3">Name</th><th className="px-4 py-3">Company</th><th className="px-4 py-3">Frequency</th>
                   <th className="px-4 py-3">Active</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Assigned</th><th className="px-4 py-3" />
                 </tr>
@@ -151,7 +152,7 @@ export function SalaryStructureView({ company, onChanged }) {
         <div className="glass-panel rounded-2xl border overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-[13px] font-bold uppercase tracking-wide text-brand-grey">
+              <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-label font-bold tracking-wide text-brand-grey">
                 <th className="px-4 py-3">Employee</th><th className="px-4 py-3">Designation</th><th className="px-4 py-3">Salary Structure</th>
                 <th className="px-4 py-3">Base</th><th className="px-4 py-3">From</th><th className="px-4 py-3" />
               </tr>
@@ -161,7 +162,7 @@ export function SalaryStructureView({ company, onChanged }) {
                 <tr key={a.name} className="border-b border-gray-100 dark:border-slate-700 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="px-4 py-3">
                     <div className="font-bold text-brand-black dark:text-slate-50">{a.employee_name}</div>
-                    <div className="text-[13px] text-brand-grey">{a.employee}</div>
+                    <div className="text-label text-brand-grey">{a.employee}</div>
                   </td>
                   <td className="px-4 py-3 text-brand-grey">{a.designation || '-'}</td>
                   <td className="px-4 py-3 text-brand-black dark:text-slate-50 font-medium">{a.salary_structure}</td>

@@ -66,12 +66,12 @@ export function PayrollDashboard({
       {/* Top Header & Period Selector */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Payroll Command Center</h2>
-          <p className="text-sm text-brand-grey">At-a-glance monthly readiness, incentives, loan deductions, and 1-click execution.</p>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Payroll Command Center</h2>
+          <p className="text-sm text-brand-grey">At-a-glance monthly readiness, incentives, and 1-click execution.</p>
         </div>
 
         {/* Period Selector */}
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-1.5 shadow-lg">
+        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-1.5 shadow-md">
           <select
             aria-label="Payroll month"
             value={month}
@@ -103,7 +103,7 @@ export function PayrollDashboard({
       </div>
 
       {/* Main Action Banner: Run Payroll */}
-      <div className="glass-panel rounded-3xl p-6 border border-brand-red/30 bg-gradient-to-r from-red-50 via-white to-purple-50 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="glass-panel rounded-3xl p-6 border border-brand-red/30 bg-white dark:bg-slate-800 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2 z-10 max-w-xl">
           <div
             data-testid="payroll-readiness-pill"
@@ -127,7 +127,7 @@ export function PayrollDashboard({
             {readyState === 'done' && `Generated and submitted ${summary?.processed_slips_count} salary slips. Total payout: ${formatCurrency(summary?.total_net_payout)}.`}
             {readyState === 'blocked' && `None of the ${activeEmployees} active employees has a salary structure assigned, so payroll cannot run yet.`}
             {readyState === 'partial' && `${missingCount} of ${activeEmployees} active employees have no salary structure and will be skipped.`}
-            {readyState === 'ready' && 'Our 1-click runner creates salary slips, calculates loan deductions & bonuses, and submits for all active employees.'}
+            {readyState === 'ready' && 'Our 1-click runner creates salary slips, adds bonuses, and submits for all active employees.'}
             {readyState === 'unknown' && (isLoading ? 'Loading payroll readiness…' : 'No active employees found for this company.')}
           </p>
         </div>
@@ -182,7 +182,7 @@ export function PayrollDashboard({
       </div>
 
       {/* Command Center Stat Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${onNewLoan ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         <StatCard
           title="Active Employees"
           value={summary?.active_employees || 0}
@@ -208,22 +208,22 @@ export function PayrollDashboard({
           onClick={onQuickIncentive}
         />
 
-        <StatCard
+        {onNewLoan && <StatCard
           title="Active Employee Loans"
           value={summary?.active_loans_count || 0}
           subtitle="Auto-deducting on next payroll"
           icon={CreditCard}
           color="amber"
           onClick={onNewLoan}
-        />
+        />}
       </div>
 
       {/* Quick Action Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Quick Incentive Card */}
-        <div className="glass-panel rounded-2xl p-5 border space-y-3 hover:border-brand-red/40 transition-all flex flex-col justify-between">
+        <div className="glass-panel rounded-2xl p-5 border space-y-3 hover:border-accent/40 transition-all flex flex-col justify-between">
           <div className="space-y-2">
-            <div className="p-2.5 rounded-xl bg-indigo-50 text-brand-red border border-indigo-200 w-fit">
+            <div className="p-2.5 rounded-xl bg-gray-100 text-brand-red border border-gray-200 dark:bg-slate-800 dark:border-slate-700 w-fit">
               <Gift className="h-5 w-5" />
             </div>
             <h4 className="text-base font-bold text-brand-black dark:text-slate-50">Quick Bonus / Incentive</h4>
@@ -241,28 +241,29 @@ export function PayrollDashboard({
           </div>
         </div>
 
-        {/* Loan Application Card */}
-        <div className="glass-panel rounded-2xl p-5 border space-y-3 hover:border-brand-red/40 transition-all flex flex-col justify-between">
+        {onNewLoan && (
+        <div className="glass-panel rounded-2xl p-5 border space-y-3 hover:border-accent/40 transition-all flex flex-col justify-between">
           <div className="space-y-2">
-            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-200 w-fit">
+            <div className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 w-fit">
               <CreditCard className="h-5 w-5" />
             </div>
             <h4 className="text-base font-bold text-brand-black dark:text-slate-50">Loan & Advance</h4>
             <p className="text-sm text-brand-grey">
-              Auto-calculated monthly EMI with with optional moratorium and disbursement.
+              Auto-calculated monthly EMI with optional moratorium and disbursement.
             </p>
           </div>
           <div className="pt-2">
-            <Button size="sm" variant="warning" onClick={onNewLoan}>
+            <Button size="sm" variant="primary" onClick={onNewLoan}>
               New Loan Application
             </Button>
           </div>
         </div>
+        )}
 
         {/* Salary Slip Viewer Card */}
-        <div className="glass-panel rounded-2xl p-5 border space-y-3 hover:border-brand-red/40 transition-all flex flex-col justify-between">
+        <div className="glass-panel rounded-2xl p-5 border space-y-3 hover:border-accent/40 transition-all flex flex-col justify-between">
           <div className="space-y-2">
-            <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 w-fit">
+            <div className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 w-fit">
               <FileText className="h-5 w-5" />
             </div>
             <h4 className="text-base font-bold text-brand-black dark:text-slate-50">Salary Slips & Distribution</h4>
@@ -271,7 +272,7 @@ export function PayrollDashboard({
             </p>
           </div>
           <div className="pt-2">
-            <Button size="sm" variant="success" onClick={onViewSalarySlips}>
+            <Button size="sm" variant="primary" onClick={onViewSalarySlips}>
               Open Payslips Hub
             </Button>
           </div>
@@ -279,7 +280,7 @@ export function PayrollDashboard({
       </div>
 
       {/* Recent Salary Structure Assignments — there was a way to *assign*
-          a structure (the modal, from here or Loans & Advances) but nothing
+          a structure (the modal) but nothing
           anywhere showed what had actually been assigned, so there was no
           way to confirm one worked short of running payroll and hoping. */}
       {recentStructureAssignments.length > 0 && (
@@ -289,7 +290,7 @@ export function PayrollDashboard({
           </div>
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey font-bold uppercase text-[13px]">
+              <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey font-bold text-label">
                 <th className="py-2.5 px-5">Employee</th>
                 <th className="py-2.5 px-5">Structure</th>
                 <th className="py-2.5 px-5">Base Salary</th>
@@ -301,7 +302,7 @@ export function PayrollDashboard({
                 <tr key={row.name} className="hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-900/60 transition-colors">
                   <td className="py-3 px-5">
                     <div className="font-bold text-brand-black dark:text-slate-50">{row.employee_name}</div>
-                    <div className="text-[13px] text-brand-grey">{row.employee}</div>
+                    <div className="text-label text-brand-grey">{row.employee}</div>
                   </td>
                   <td className="py-3 px-5 text-gray-700 dark:text-slate-200">{row.salary_structure}</td>
                   <td className="py-3 px-5 font-semibold text-emerald-600">{formatCurrency(row.base)}</td>
