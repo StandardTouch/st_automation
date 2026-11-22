@@ -155,7 +155,7 @@ function CareersContent() {
             <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="w-10 h-10" />
             </div>
-            <h2 className="text-3xl font-heading font-bold text-brand-black dark:text-white mb-4">
+            <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-white mb-4">
               Application Received!
             </h2>
             <p className="text-gray-600 dark:text-slate-300 mb-8">
@@ -218,7 +218,7 @@ function CareersContent() {
                         required
                         value={formData.applicant_name}
                         onChange={e => setFormData({...formData, applicant_name: e.target.value})}
-                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold focus:border-brand-red focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white"
+                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold focus:border-accent focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white"
                         placeholder="e.g. John Doe"
                       />
                     </div>
@@ -230,7 +230,7 @@ function CareersContent() {
                         required
                         value={formData.email_id}
                         onChange={e => setFormData({...formData, email_id: e.target.value})}
-                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold focus:border-brand-red focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white"
+                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold focus:border-accent focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white"
                         placeholder="e.g. john@example.com"
                       />
                     </div>
@@ -241,7 +241,7 @@ function CareersContent() {
                         type="tel"
                         value={formData.phone_number}
                         onChange={e => setFormData({...formData, phone_number: e.target.value})}
-                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold focus:border-brand-red focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white"
+                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold focus:border-accent focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white"
                         placeholder="+1 234 567 890"
                       />
                     </div>
@@ -252,7 +252,7 @@ function CareersContent() {
                         type="file"
                         accept=".pdf,.doc,.docx"
                         onChange={handleFileUpload}
-                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold focus:border-brand-red focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-brand-red hover:file:bg-red-100"
+                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm font-semibold focus:border-accent focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-brand-red hover:file:bg-red-100"
                       />
                       {formData.resume_name && <p className="text-xs text-emerald-600 mt-2 font-medium">Attached: {formData.resume_name}</p>}
                     </div>
@@ -263,7 +263,7 @@ function CareersContent() {
                         rows={4}
                         value={formData.cover_letter}
                         onChange={e => setFormData({...formData, cover_letter: e.target.value})}
-                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-semibold focus:border-brand-red focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white resize-none"
+                        className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm font-semibold focus:border-accent focus:ring-1 focus:ring-brand-red outline-none transition-all text-brand-black dark:text-white resize-none"
                         placeholder="Link to your portfolio, LinkedIn, or a short cover letter..."
                       />
                     </div>
@@ -305,7 +305,7 @@ function CareersContent() {
                   <div 
                     key={job.name} 
                     onClick={() => setSelectedJob(job)}
-                    className="group bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-brand-red/30 cursor-pointer transition-all flex items-center justify-between"
+                    className="group bg-white dark:bg-slate-800 p-6 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-accent/30 cursor-pointer transition-all flex items-center justify-between"
                   >
                     <div>
                       <h3 className="text-xl font-bold text-brand-black dark:text-white mb-2 group-hover:text-brand-red transition-colors">

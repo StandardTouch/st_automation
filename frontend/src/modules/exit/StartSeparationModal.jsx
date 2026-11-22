@@ -79,13 +79,13 @@ export function StartSeparationModal({ isOpen, onClose, company, onSuccess }) {
   if (!isOpen) return null;
 
   return (
-    <DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="Initiate Separation" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label="Initiate Separation" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
-              <UserMinus className="h-5 w-5 text-orange-600" />
+            <div className="w-10 h-10 bg-gray-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+              <UserMinus className="h-5 w-5 text-accent" />
             </div>
             <div>
               <h3 className="font-bold text-lg text-slate-900 dark:text-white">Initiate Separation</h3>
@@ -103,12 +103,12 @@ export function StartSeparationModal({ isOpen, onClose, company, onSuccess }) {
           <div>
             <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Employee *</label>
             {selectedEmployee ? (
-              <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl">
+              <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 dark:border-gray-200 dark:border-slate-700 rounded-xl">
                 <div className="flex items-center gap-3">
                   {selectedEmployee.image ? (
                     <img src={selectedEmployee.image} alt="" className="w-10 h-10 rounded-full object-cover" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-accent font-bold text-sm">
                       {selectedEmployee.employee_name?.charAt(0)}
                     </div>
                   )}
@@ -138,7 +138,7 @@ export function StartSeparationModal({ isOpen, onClose, company, onSuccess }) {
                         onClick={() => { setSelectedEmployee(emp); setFilteredEmployees([]); setEmployeeQuery(''); }}
                         className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors flex items-center gap-3 border-b border-slate-100 dark:border-slate-600 last:border-0"
                       >
-                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs">
+                        <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-accent font-bold text-xs">
                           {emp.employee_name?.charAt(0)}
                         </div>
                         <div>
@@ -204,7 +204,7 @@ export function StartSeparationModal({ isOpen, onClose, company, onSuccess }) {
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || !selectedEmployee}
-            className="px-5 py-2.5 text-sm font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 text-sm font-bold text-white bg-accent rounded-xl hover:bg-accent-hover transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Initiating...' : 'Initiate Separation'}
           </button>

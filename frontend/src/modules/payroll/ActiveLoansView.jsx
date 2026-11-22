@@ -22,7 +22,7 @@ export function ActiveLoansView({ onLaunchLoanWizard, company, loans = [], isLoa
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Loans & Advances</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Loans & Advances</h2>
           <p className="text-sm text-brand-grey">
             Track active employee salary advances and automated payroll installments.
           </p>
@@ -61,7 +61,7 @@ export function ActiveLoansView({ onLaunchLoanWizard, company, loans = [], isLoa
             Loans created here automatically link repayment schedules directly to monthly payroll runs.
           </p>
           <div className="pt-2">
-            <Button size="sm" variant="warning" onClick={onLaunchLoanWizard}>
+            <Button size="sm" variant="primary" onClick={onLaunchLoanWizard}>
               New Loan Application
             </Button>
           </div>
@@ -70,7 +70,7 @@ export function ActiveLoansView({ onLaunchLoanWizard, company, loans = [], isLoa
         <div className="glass-panel rounded-2xl border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-[13px] font-bold uppercase tracking-wide text-brand-grey">
+              <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-label font-bold tracking-wide text-brand-grey">
                 <th className="px-4 py-3">Employee ID</th>
                 <th className="px-4 py-3">Employee Name</th>
                 <th className="px-4 py-3">Loan Amount</th>
@@ -90,7 +90,7 @@ export function ActiveLoansView({ onLaunchLoanWizard, company, loans = [], isLoa
                 >
                   <td className="px-4 py-3">
                     <div className="font-bold text-brand-black dark:text-slate-50">{loan.applicant}</div>
-                    <div className="text-[13px] text-brand-grey">{loan.name}</div>
+                    <div className="text-label text-brand-grey">{loan.name}</div>
                   </td>
                   <td className="px-4 py-3 text-brand-black dark:text-slate-50 font-medium">
                     {loan.applicant_name || '-'}

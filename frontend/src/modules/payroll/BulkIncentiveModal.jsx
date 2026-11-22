@@ -44,7 +44,7 @@ export function BulkIncentiveModal({ isOpen, onClose, onBulkSubmit, isSubmitting
         <div className="overflow-x-auto max-h-[380px]">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey font-bold uppercase">
+              <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey font-bold ">
                 <th className="pb-2">Employee *</th>
                 <th className="pb-2">Amount (₹) *</th>
                 <th className="pb-2">Component</th>
@@ -59,7 +59,7 @@ export function BulkIncentiveModal({ isOpen, onClose, onBulkSubmit, isSubmitting
                     <EmployeeSelect
                       value={row.employee}
                       onChange={(e) => updateRow(idx, 'employee', e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                      className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
                     />
                   </td>
                   <td className="py-2 pr-2">
@@ -69,14 +69,14 @@ export function BulkIncentiveModal({ isOpen, onClose, onBulkSubmit, isSubmitting
                       placeholder="5000"
                       value={row.amount}
                       onChange={(e) => updateRow(idx, 'amount', e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-brand-red"
+                      className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-accent"
                     />
                   </td>
                   <td className="py-2 pr-2">
                     <select
                       value={row.component}
                       onChange={(e) => updateRow(idx, 'component', e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                      className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
                     >
                       <option value="Incentive">Incentive</option>
                       <option value="Performance Bonus">Bonus</option>
@@ -89,7 +89,7 @@ export function BulkIncentiveModal({ isOpen, onClose, onBulkSubmit, isSubmitting
                       placeholder="Optional note"
                       value={row.notes}
                       onChange={(e) => updateRow(idx, 'notes', e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+                      className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
                     />
                   </td>
                   <td className="py-2 text-right">

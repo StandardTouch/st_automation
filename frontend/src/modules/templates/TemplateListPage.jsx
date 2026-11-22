@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { templateApi } from '../../api/templateApi';
 import { useToast } from '../../components/common/Toast';
 import { Plus, Search, Edit2, Trash2, Building2, Briefcase, Users, LayoutTemplate } from 'lucide-react';
+import { confirmAction } from '../../components/common/ConfirmDialog';
 
 export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) {
   const { addToast } = useToast();
@@ -28,7 +29,7 @@ export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) 
   }, [activeTab]);
 
   const handleDelete = async (name) => {
-    if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;
+    if (!(await confirmAction({ title: 'Delete template?', message: `Delete ${name}? This cannot be undone.`, confirmLabel: 'Delete template', tone: 'danger' }))) return;
     try {
       await templateApi.deleteTemplate(activeTab, name);
       addToast('Template deleted successfully', 'success');
@@ -53,7 +54,7 @@ export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) 
         </div>
         <button
           onClick={() => onCreate(activeTab)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-brand-red text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-sm"
+          className="flex items-center gap-2 px-5 py-2.5 bg-accent text-white font-semibold rounded-xl hover:bg-accent-hover transition-colors shadow-sm"
         >
           <Plus className="h-5 w-5" />
           Create Template
@@ -84,7 +85,7 @@ export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) 
             placeholder="Search templates..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent transition-all"
           />
         </div>
       </div>
@@ -113,10 +114,10 @@ export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) 
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTemplates.map(template => (
-            <div key={template.name} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-lg transition-all group">
+            <div key={template.name} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all group">
               <div className="p-6">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-red/20 to-red-600/10 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-brand-red/10 flex items-center justify-center">
                     <LayoutTemplate className="h-6 w-6 text-brand-red" />
                   </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
@@ -150,9 +151,9 @@ export function TemplateListPage({ onEdit, onCreate, initialTab, onTabChange }) 
                 </div>
               </div>
               <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{activeTab}</span>
+                <span className="text-xs font-semibold text-slate-500">{activeTab}</span>
                 <button onClick={() => onEdit(activeTab, template.name)} aria-label={`Edit template ${template.name}`} title="Edit template" className="text-sm font-semibold text-brand-red hover:text-red-700 flex items-center gap-1 py-2 -my-2">
-                  Manage tasks &rarr;
+                  Manage tasks
                 </button>
               </div>
             </div>

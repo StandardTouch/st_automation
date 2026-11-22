@@ -75,7 +75,7 @@ export function LoanDetailModal({ loanId, onClose, onRefresh }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-4 flex flex-col justify-between">
               <div>
-                <p className="text-xs font-bold text-brand-grey uppercase tracking-wider mb-1">Status</p>
+                <p className="text-xs font-bold text-brand-grey mb-1">Status</p>
                 <Badge variant={STATUS_VARIANT[loan.status] || 'default'}>{loan.status}</Badge>
               </div>
               {loan.status === 'Sanctioned' && (
@@ -94,15 +94,15 @@ export function LoanDetailModal({ loanId, onClose, onRefresh }) {
               )}
             </div>
             <div className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-4">
-              <p className="text-xs font-bold text-brand-grey uppercase tracking-wider mb-1">Loan Amount</p>
+              <p className="text-xs font-bold text-brand-grey mb-1">Loan Amount</p>
               <p className="font-bold text-brand-black dark:text-slate-50">{formatCurrency(loan.loan_amount)}</p>
             </div>
             <div className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-4">
-              <p className="text-xs font-bold text-brand-grey uppercase tracking-wider mb-1">Monthly EMI</p>
+              <p className="text-xs font-bold text-brand-grey mb-1">Monthly EMI</p>
               <p className="font-bold text-brand-black dark:text-slate-50">{formatCurrency(loan.monthly_repayment_amount)}</p>
             </div>
             <div className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-4">
-              <p className="text-xs font-bold text-brand-grey uppercase tracking-wider mb-1">Total Paid</p>
+              <p className="text-xs font-bold text-brand-grey mb-1">Total Paid</p>
               <p className="font-bold text-emerald-600">{formatCurrency(loan.total_amount_paid || 0)}</p>
             </div>
           </div>
@@ -158,8 +158,8 @@ export function LoanDetailModal({ loanId, onClose, onRefresh }) {
               <div className="bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
                 <div className="max-h-[300px] overflow-y-auto">
                   <table className="w-full">
-                    <thead className="bg-white/50 dark:bg-slate-800/50 sticky top-0 backdrop-blur-md">
-                      <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-[11px] font-bold uppercase tracking-wider text-brand-grey">
+                    <thead className="bg-white/50 dark:bg-slate-800/50 sticky top-0 ">
+                      <tr className="border-b border-gray-200 dark:border-slate-700 text-left text-micro font-bold text-brand-grey">
                         <th className="px-4 py-3">Date</th>
                         <th className="px-4 py-3">Amount</th>
                         <th className="px-4 py-3 text-right">Status</th>

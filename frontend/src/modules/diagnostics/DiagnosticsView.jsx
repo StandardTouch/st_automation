@@ -16,14 +16,14 @@ export function DiagnosticsView({ healthData, isLoading, onRefresh, onAutoFix, i
     pass: { icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
     warning: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
     action_required: { icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200' },
-    info: { icon: Activity, color: 'text-brand-red', bg: 'bg-indigo-50 border-indigo-200' },
+    info: { icon: Activity, color: 'text-brand-red', bg: 'bg-gray-100 border-gray-200 dark:bg-slate-800 dark:border-slate-700' },
   };
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">System Readiness & Setup</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">System Readiness & Setup</h2>
           <p className="text-sm text-brand-grey">
             Pre-flight checks and 1-click self-healing for ERPNext configuration prerequisites.
           </p>

@@ -127,7 +127,7 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
               <div className="flex items-center gap-2">
                 <div className={`h-7 w-7 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                   step === s.num 
-                    ? 'bg-brand-red text-white shadow-lg shadow-glow-red' 
+                    ? 'bg-accent text-white shadow-md ' 
                     : step > s.num 
                     ? 'bg-emerald-600 text-white' 
                     : 'bg-gray-100 dark:bg-slate-800 text-brand-grey'
@@ -166,7 +166,7 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
                   placeholder="e.g. 50000"
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-brand-red"
+                  className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-accent"
                 />
               </div>
 
@@ -175,7 +175,7 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
                 <select
                   value={formData.tenure_months}
                   onChange={(e) => setFormData({ ...formData, tenure_months: Number(e.target.value) })}
-                  className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-brand-red"
+                  className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-accent"
                 >
                   {Array.from({ length: 36 }, (_, i) => i + 1).map(month => (
                     <option key={month} value={month}>{month} Month{month > 1 ? 's' : ''}</option>
@@ -197,9 +197,9 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
                 max={todayStr}
                 value={formData.disbursement_date}
                 onChange={(e) => setFormData({ ...formData, disbursement_date: e.target.value })}
-                className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-brand-red"
+                className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 font-bold focus:outline-none focus:border-accent"
               />
-              <p className="mt-1 text-[13px] text-brand-grey">
+              <p className="mt-1 text-label text-brand-grey">
                 Can be in the past for an existing loan. Monthly deductions always begin from the next payroll cycle, never backdated.
               </p>
             </div>
@@ -233,7 +233,7 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
                     }}
                     className="w-32 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-brand-black dark:text-slate-50"
                   />
-                  <p className="text-[13px] text-gray-500 dark:text-slate-400">
+                  <p className="text-label text-gray-500 dark:text-slate-400">
                     Caution: Setting moratorium &gt; 0 delays the first payroll deduction by that many months.
                   </p>
                 </div>
@@ -262,27 +262,27 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
           <div className="space-y-5 animate-fade-in">
             <div className="bg-gray-50 dark:bg-slate-900/70 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 space-y-4">
               <div className="flex items-center justify-between border-b border-gray-200 dark:border-slate-700 pb-3">
-                <span className="text-sm font-bold text-brand-grey uppercase">Employee</span>
+                <span className="text-sm font-bold text-brand-grey ">Employee</span>
                 <span className="text-sm font-bold text-brand-black dark:text-slate-50">{previewData.employee_name} ({previewData.employee})</span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-gray-200 dark:border-slate-700/80">
-                  <span className="text-[13px] text-brand-grey block font-semibold">Principal Loan</span>
+                  <span className="text-label text-brand-grey block font-semibold">Principal Loan</span>
                   <span className="text-base font-heading font-bold text-brand-black dark:text-slate-50 mt-0.5 block">
                     {formatCurrency(previewData.principal_amount)}
                   </span>
                 </div>
 
-                <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-200">
-                  <span className="text-[13px] text-indigo-700 block font-semibold">Monthly EMI</span>
-                  <span className="text-base font-heading font-bold text-indigo-700 mt-0.5 block">
+                <div className="bg-gray-100 dark:bg-slate-800 p-3 rounded-xl border border-gray-200 dark:border-slate-700">
+                  <span className="text-label text-gray-800 dark:text-slate-100 block font-semibold">Monthly EMI</span>
+                  <span className="text-base font-heading font-bold text-gray-800 dark:text-slate-100 mt-0.5 block">
                     {formatCurrency(previewData.monthly_installment)} / mo
                   </span>
                 </div>
 
                 <div className="bg-white dark:bg-slate-800/80 p-3 rounded-xl border border-gray-200 dark:border-slate-700/80">
-                  <span className="text-[13px] text-brand-grey block font-semibold">Tenure</span>
+                  <span className="text-label text-brand-grey block font-semibold">Tenure</span>
                   <span className="text-base font-heading font-bold text-brand-black dark:text-slate-50 mt-0.5 block">
                     {previewData.tenure_months} Months
                   </span>
@@ -321,7 +321,7 @@ export function LoanApplicationWizard({ isOpen, onClose, onCreateLoan, onDisburs
         {step === 3 && previewData && (
           <div className="space-y-5 animate-fade-in">
             <div className="text-center space-y-2 py-3">
-              <div className="h-12 w-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center mx-auto shadow-sm">
+              <div className="h-12 w-12 rounded-2xl bg-gray-100 text-gray-700 border border-gray-200 dark:bg-slate-800 dark:border-slate-700 flex items-center justify-center mx-auto shadow-sm">
                 <FileText className="h-6 w-6" />
               </div>
               <h3 className="text-lg font-bold text-brand-black dark:text-slate-50">Sanction Loan Application</h3>

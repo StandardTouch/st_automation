@@ -170,6 +170,10 @@ test.describe('Feedback rating conflict (mocked)', () => {
     await go(page, 'my-interviews');
     await page.getByRole('button', { name: /submit feedback/i }).first().click();
     const dialog = page.getByRole('dialog', { name: /interview scorecard/i });
+    // Nothing is pre-selected: submit is off until a rating and a recommendation are chosen.
+    await expect(dialog.getByRole('button', { name: /submit scorecard/i })).toBeDisabled();
+    await dialog.getByRole('button', { name: '4 stars' }).click();
+    await dialog.getByText('Pass / Recommended').click();
     await expect(dialog.getByTestId('rating-mismatch-warning')).toHaveCount(0);
     await expect(dialog.getByRole('button', { name: /submit scorecard/i })).toBeEnabled();
   });
@@ -226,7 +230,7 @@ test.describe('Dialog keyboard behaviour', () => {
   });
 });
 
-const PAGES = ['recruitment-pipeline', 'job-openings', 'my-interviews', 'payroll-command', 'run-payroll', 'salary-structures', 'loans', 'salary-slips', 'diagnostics'];
+const PAGES = ['recruitment-pipeline', 'job-openings', 'my-interviews', 'payroll-command', 'run-payroll', 'salary-structures', 'salary-slips', 'diagnostics'];
 
 test.describe('Layout and accessibility on every project width', () => {
   for (const route of PAGES) {
@@ -339,5 +343,22 @@ test.describe('Visual check: template titles (F-17)', () => {
     const { scrollW, clientW } = await h3.evaluate((e) => ({ scrollW: e.scrollWidth, clientW: e.clientWidth }));
     expect(scrollW).toBeLessThanOrEqual(clientW + 1); // wraps instead of overflowing
     await page.screenshot({ path: 'e2e/screenshots/templates-long-titles.png' });
+  });
+});
+
+test.describe('Theme switch', () => {
+  test('toggle flips light and dark, remembers the choice, and Loans stay hidden', async ({ page }) => {
+    await mockApi(page);
+    await go(page, 'recruitment-pipeline');
+    const html = page.locator('html');
+    const toggle = page.getByRole('button', { name: /switch to (light|dark) mode/i });
+    await expect(toggle).toBeVisible();
+    const startedDark = await html.evaluate((el) => el.classList.contains('dark'));
+    await toggle.click();
+    await expect(html).toHaveClass(startedDark ? /^((?!dark).)*$/ : /dark/);
+    await page.reload();
+    await expect(html).toHaveClass(startedDark ? /^((?!dark).)*$/ : /dark/); // choice survives reload
+    // Loans are switched off (no Lending module): no menu entry on desktop.
+    if (isDesktop(page)) await expect(page.getByRole('button', { name: /Loans & Advances/ })).toHaveCount(0);
   });
 });

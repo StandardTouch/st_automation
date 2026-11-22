@@ -89,7 +89,7 @@ export function BulkAssignStructureModal({ isOpen, onClose, company, onSuccess, 
   };
 
   const nameOf = (id) => employees.find((e) => e.name === id)?.employee_name || id;
-  const input = 'w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red';
+  const input = 'w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:border-accent focus:ring-1 focus:ring-brand-red';
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Assign structure to multiple employees"
@@ -126,7 +126,7 @@ export function BulkAssignStructureModal({ isOpen, onClose, company, onSuccess, 
 
           <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200 dark:border-slate-700">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 text-left text-xs font-bold uppercase text-brand-grey">
+              <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 text-left text-xs font-bold text-brand-grey">
                 <tr>
                   <th className="px-3 py-2 w-10">
                     <input type="checkbox" aria-label="Select all employees" checked={allSelected}
@@ -171,7 +171,7 @@ export function BulkAssignStructureModal({ isOpen, onClose, company, onSuccess, 
           )}
           <div className="max-h-64 overflow-y-auto rounded-xl border border-gray-200 dark:border-slate-700">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 text-left text-xs font-bold uppercase text-brand-grey"><tr><th className="px-3 py-2">Employee</th><th className="px-3 py-2">Structure</th><th className="px-3 py-2">Base</th><th className="px-3 py-2">From</th></tr></thead>
+              <thead className="sticky top-0 bg-gray-50 dark:bg-slate-800 text-left text-xs font-bold text-brand-grey"><tr><th className="px-3 py-2">Employee</th><th className="px-3 py-2">Structure</th><th className="px-3 py-2">Base</th><th className="px-3 py-2">From</th></tr></thead>
               <tbody>{(preview?.preview || []).map((r) => (
                 <tr key={r.employee} className="border-t border-gray-100 dark:border-slate-700"><td className="px-3 py-2">{nameOf(r.employee)}</td><td className="px-3 py-2">{r.salary_structure}</td><td className="px-3 py-2">{r.base}</td><td className="px-3 py-2">{r.from_date}</td></tr>
               ))}</tbody>

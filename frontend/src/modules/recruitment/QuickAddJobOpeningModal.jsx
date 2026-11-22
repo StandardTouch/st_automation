@@ -49,7 +49,7 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
             placeholder="e.g. Senior React Developer"
             value={formData.job_title}
             onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
           />
         </div>
 
@@ -62,7 +62,7 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
               placeholder="e.g. Engineering"
               value={formData.department}
               onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
             />
             <datalist id="department-options">
               {departments.map((dept) => (
@@ -80,7 +80,7 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
               step="1"
               value={formData.vacancies}
               onChange={(e) => setFormData({ ...formData, vacancies: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
             />
           </div>
         </div>
@@ -91,7 +91,7 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
             >
               <option value="Open">Open</option>
               <option value="Closed">Closed</option>
@@ -105,7 +105,7 @@ export function QuickAddJobOpeningModal({ isOpen, onClose, onAdd, isSubmitting, 
             rows={4}
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
           />
         </div>
         <label className="flex items-center gap-2.5 cursor-pointer select-none">

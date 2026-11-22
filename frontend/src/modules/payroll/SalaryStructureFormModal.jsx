@@ -6,8 +6,8 @@ import { useToast } from '../../components/common/Toast';
 import { formatCurrency } from '../../api/client';
 import { salaryStructureApi } from '../../api/salaryStructureApi';
 
-const inputCls = 'w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:border-brand-red focus:ring-1 focus:ring-brand-red disabled:opacity-60';
-const cellCls = 'w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:border-brand-red disabled:opacity-60';
+const inputCls = 'w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:border-accent focus:ring-1 focus:ring-brand-red disabled:opacity-60';
+const cellCls = 'w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:border-accent disabled:opacity-60';
 
 const emptyRow = () => ({
   salary_component: '', amount_based_on_formula: 0, formula: '', amount: '',
@@ -59,7 +59,7 @@ function ComponentTable({ title, rows, components, onChange, locked }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-bold uppercase tracking-wide text-brand-grey">{title}</h4>
+        <h4 className="text-sm font-bold tracking-wide text-brand-grey">{title}</h4>
         {!locked && (
           <Button type="button" size="sm" variant="secondary" icon={Plus} onClick={() => onChange([...rows, emptyRow()])}>
             Add Row
@@ -108,7 +108,7 @@ function ComponentTable({ title, rows, components, onChange, locked }) {
                   </button>
                 )}
               </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-gray-700 dark:text-slate-300">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-label text-gray-700 dark:text-slate-300">
                 {[
                   ['amount_based_on_formula', 'Amount based on formula'],
                   ['depends_on_payment_days', 'Depends on payment days'],
@@ -132,7 +132,7 @@ function ComponentTable({ title, rows, components, onChange, locked }) {
           ))}
         </div>
       )}
-      <p className="text-[13px] text-brand-grey text-right">Fixed amounts total: <strong>{formatCurrency(total)}</strong> (formula rows are computed from Base at assignment)</p>
+      <p className="text-label text-brand-grey text-right">Fixed amounts total: <strong>{formatCurrency(total)}</strong> (formula rows are computed from Base at assignment)</p>
     </div>
   );
 }

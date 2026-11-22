@@ -140,7 +140,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
           </div>
           <button
             onClick={onStartSeparation}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-accent rounded-xl hover:bg-accent-hover transition-colors shadow-sm"
           >
             <Plus className="h-4 w-4" /> Initiate Separation
           </button>
@@ -160,7 +160,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
             {showCompleted ? 'Completed separations will appear here.' : 'Initiate a separation when an employee resigns or is released.'}
           </p>
           {!showCompleted && (
-            <button onClick={onStartSeparation} className="px-5 py-2.5 text-sm font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 transition-colors">
+            <button onClick={onStartSeparation} className="px-5 py-2.5 text-sm font-bold text-white bg-accent rounded-xl hover:bg-accent-hover transition-colors">
               <Plus className="inline h-4 w-4 mr-1 -mt-0.5" /> Initiate Separation
             </button>
           )}
@@ -185,7 +185,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                   {sep.image ? (
                     <img src={sep.image} alt="" className="w-12 h-12 rounded-xl object-cover" />
                   ) : (
-                    <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 font-bold text-lg">
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-accent font-bold text-lg">
                       {sep.employee_name?.charAt(0)}
                     </div>
                   )}
@@ -209,7 +209,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                   <div className="flex items-center gap-3 min-w-[140px]">
                     <div className="flex-1 h-2.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-700 ${allDone ? 'bg-green-500' : 'bg-orange-500'}`}
+                        className={`h-full rounded-full transition-all duration-700 ${allDone ? 'bg-green-500' : 'bg-accent'}`}
                         style={{ width: `${Math.min(sep.percent_complete, 100)}%` }}
                       />
                     </div>
@@ -245,7 +245,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                   {/* Magic Link Section */}
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                     <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-orange-500" /> Exit Checklist
+                      <CheckCircle2 className="h-5 w-5 text-accent" /> Exit Checklist
                     </h4>
                     <div className="flex items-center gap-2">
                       {sep.token && (
@@ -258,7 +258,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                           <Link2Off className="h-3.5 w-3.5" /> Revoke
                         </button>
                       )}
-                      <button onClick={() => handleResendLink(sep.name)} disabled={isActionLoading} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50">
+                      <button onClick={() => handleResendLink(sep.name)} disabled={isActionLoading} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-accent rounded-lg hover:bg-accent-hover transition-colors disabled:opacity-50">
                         <Send className="h-3.5 w-3.5" /> {sep.token ? 'Resend' : 'Generate'} Link
                       </button>
                     </div>
@@ -267,7 +267,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                   {sep.token && sep.status_url && (
                     <div className="mb-5 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs flex items-center gap-2">
                       <LinkIcon className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                      <a href={sep.status_url} target="_blank" rel="noreferrer" className="text-orange-600 hover:underline truncate">{sep.status_url}</a>
+                      <a href={sep.status_url} target="_blank" rel="noreferrer" className="text-accent hover:underline truncate">{sep.status_url}</a>
                     </div>
                   )}
 
@@ -283,7 +283,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                           key={task.name}
                           className={`rounded-xl border transition-all ${
                             isCompleted ? 'bg-white dark:bg-slate-800 border-green-200 dark:border-green-900/40' :
-                            isCurrent ? 'bg-white dark:bg-slate-800 border-orange-400 shadow-sm ring-1 ring-orange-400/10' :
+                            isCurrent ? 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 shadow-sm ring-1 ring-accent/20' :
                             'bg-slate-100/50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700 opacity-60'
                           }`}
                         >
@@ -291,7 +291,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                             <div className="flex items-center gap-4 flex-1 min-w-0">
                               <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                                 isCompleted ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' :
-                                isCurrent ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30' :
+                                isCurrent ? 'bg-gray-100 dark:bg-slate-800 text-accent' :
                                 'bg-slate-200 text-slate-400 dark:bg-slate-700'
                               }`}>
                                 {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : isLocked ? <Lock className="h-4 w-4" /> : idx + 1}
@@ -322,7 +322,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                                     className="hidden lg:block w-40 px-2.5 py-1.5 text-xs border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-orange-500"
                                   />
                                   {assignInputs[task.name] && (
-                                    <button onClick={() => handleAssignTask(task.name)} disabled={isActionLoading} className="px-2.5 py-1.5 text-xs font-medium text-orange-600 border border-orange-500 rounded-lg hover:bg-orange-600 hover:text-white transition-colors disabled:opacity-50">
+                                    <button onClick={() => handleAssignTask(task.name)} disabled={isActionLoading} className="px-2.5 py-1.5 text-xs font-medium text-accent border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-accent hover:text-white transition-colors disabled:opacity-50">
                                       Assign
                                     </button>
                                   )}
@@ -339,7 +339,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                                     <button
                                       onClick={() => handleCompleteStage(sep.name, task.name)}
                                       disabled={isActionLoading}
-                                      className="px-4 py-2 text-sm font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors shadow-sm disabled:opacity-50"
+                                      className="px-4 py-2 text-sm font-bold text-white bg-accent rounded-lg hover:bg-accent-hover transition-colors shadow-sm disabled:opacity-50"
                                     >
                                       Mark Complete
                                     </button>
@@ -366,7 +366,7 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
                                 className="flex-1 px-3 py-2 text-xs border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-orange-500"
                               />
                               {commentInputs[task.name] && (
-                                <button onClick={() => handleAddComment(task.name)} disabled={isActionLoading} className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-orange-600 hover:bg-orange-600 hover:text-white border border-orange-500 rounded-lg transition-colors disabled:opacity-50">
+                                <button onClick={() => handleAddComment(task.name)} disabled={isActionLoading} className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-accent hover:bg-accent hover:text-white border border-gray-200 dark:border-slate-700 rounded-lg transition-colors disabled:opacity-50">
                                   <MessageSquarePlus className="h-3.5 w-3.5" /> Add
                                 </button>
                               )}
@@ -385,8 +385,8 @@ export function ExitPipelineView({ pipelineData, isLoading, onRefresh, onStartSe
 
       {/* Mark as Left Confirmation Dialog */}
       {markLeftDialog && (
-        <DialogA11y onClose={() => setMarkLeftDialog(null)}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setMarkLeftDialog(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Mark employee as left" className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
+        <DialogA11y onClose={() => setMarkLeftDialog(null)}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in" onClick={() => setMarkLeftDialog(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Mark employee as left" className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-6 text-center">
               <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <LogOut className="h-7 w-7 text-amber-600" />

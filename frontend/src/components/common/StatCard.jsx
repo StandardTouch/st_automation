@@ -6,24 +6,24 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, color = 'i
   // wherever a StatCard appeared (dashboards, recruitment overview, etc.).
   const colorMap = {
     indigo: {
-      bg: 'bg-indigo-50 border-indigo-200 text-brand-red',
-      glow: 'hover:border-brand-red/50 hover:shadow-glow',
+      bg: 'bg-gray-100 border-gray-200 dark:bg-slate-800 dark:border-slate-700 text-brand-red',
+      glow: 'hover:border-gray-400 dark:hover:border-slate-500',
     },
     emerald: {
-      bg: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-      glow: 'hover:border-emerald-500/50 hover:shadow-glow-emerald',
+      bg: 'bg-gray-100 border-gray-200 dark:bg-slate-800 dark:border-slate-700 text-gray-600 dark:text-slate-300',
+      glow: 'hover:border-gray-400 dark:hover:border-slate-500',
     },
     amber: {
-      bg: 'bg-amber-50 border-amber-200 text-amber-700',
-      glow: 'hover:border-amber-500/50',
+      bg: 'bg-gray-100 border-gray-200 dark:bg-slate-800 dark:border-slate-700 text-gray-600 dark:text-slate-300',
+      glow: 'hover:border-gray-400 dark:hover:border-slate-500',
     },
     rose: {
-      bg: 'bg-rose-50 border-rose-200 text-rose-700',
-      glow: 'hover:border-rose-500/50',
+      bg: 'bg-gray-100 border-gray-200 dark:bg-slate-800 dark:border-slate-700 text-gray-600 dark:text-slate-300',
+      glow: 'hover:border-gray-400 dark:hover:border-slate-500',
     },
     cyan: {
-      bg: 'bg-cyan-50 border-cyan-200 text-cyan-700',
-      glow: 'hover:border-cyan-500/50',
+      bg: 'bg-gray-100 border-gray-200 dark:bg-slate-800 dark:border-slate-700 text-gray-600 dark:text-slate-300',
+      glow: 'hover:border-gray-400 dark:hover:border-slate-500',
     },
   };
 
@@ -32,10 +32,10 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, color = 'i
   return (
     <div 
       onClick={onClick}
-      className={`glass-panel rounded-2xl p-5 border transition-all duration-200 ${currentTheme.glow} ${onClick ? 'cursor-pointer' : ''}`}
+      className={`glass-panel rounded-2xl p-5 border transition-colors duration-150 ${currentTheme.glow} ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold uppercase tracking-wider text-brand-grey">{title}</span>
+        <span className="text-sm font-semibold text-brand-grey">{title}</span>
         {Icon && (
           <div className={`p-2 rounded-xl border ${currentTheme.bg}`}>
             <Icon className="h-4 w-4" />

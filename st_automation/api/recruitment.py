@@ -876,7 +876,12 @@ def schedule_interview_round(applicant_id, round_number, interviewers, scheduled
 					frappe.log_error(title="st_automation Email", message=f"Failed to send interview email to {email}: {mail_err}")
 
 		frappe.db.commit()
-		return success_response(message=f"{round_name} scheduled successfully. Calendar invites sent to {len(interviewer_emails)} interviewers.")
+		if emails_sent:
+			plural = "interviewer" if emails_sent == 1 else "interviewers"
+			return success_response(message=f"{round_name} scheduled. Calendar invite sent to {emails_sent} {plural}.")
+		return success_response(
+			message=f"{round_name} scheduled. No calendar invite was sent: the selected interviewers have no email address on file."
+		)
 
 	except Exception as e:
 		return error_response(f"Error scheduling round {round_number}: {str(e)}", e)

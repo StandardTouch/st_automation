@@ -47,7 +47,7 @@ export function QuickAddApplicantModal({ isOpen, onClose, onAdd, jobOpenings = [
   };
   const inputClass = (name) =>
     `w-full bg-gray-50 dark:bg-slate-900 border rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none ${
-      errors[name] ? 'border-red-500 ring-1 ring-red-500 focus:border-red-500' : 'border-gray-200 dark:border-slate-700 focus:border-brand-red'
+      errors[name] ? 'border-red-500 ring-1 ring-red-500 focus:border-red-500' : 'border-gray-200 dark:border-slate-700 focus:border-accent'
     }`;
   const FieldError = ({ name }) =>
     errors[name] ? <p className="mt-1 text-sm text-red-600 font-medium">{errors[name]}</p> : null;
@@ -195,7 +195,7 @@ export function QuickAddApplicantModal({ isOpen, onClose, onAdd, jobOpenings = [
             rows={2}
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+            className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
           />
         </div>
 

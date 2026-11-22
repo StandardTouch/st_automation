@@ -81,7 +81,7 @@ export default function EmployeeSelect({ value, onChange, className, multiple = 
         value={value}
         onChange={onChange}
         required={!multiple}
-        className={className || "w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"}
+        className={className || "w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"}
         disabled={loading}
       >
         <option value="">{loading ? 'Loading employees...' : 'Select an Employee'}</option>
@@ -136,7 +136,7 @@ export default function EmployeeSelect({ value, onChange, className, multiple = 
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setIsOpen(false); setQuery(''); } }}
               placeholder="Type to search by name or ID..."
-              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red"
+              className="w-full bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent"
             />
           </div>
           {employees.filter((emp) => {
@@ -150,14 +150,14 @@ export default function EmployeeSelect({ value, onChange, className, multiple = 
                 onClick={() => handleToggleOption(emp.name)}
                 className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${isSelected ? 'bg-red-50/50' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50 dark:bg-slate-900'}`}
               >
-                <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-brand-red border-brand-red text-white' : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800'}`}>
+                <div className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-accent border-accent text-white' : 'border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800'}`}>
                   {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
                 </div>
                 <div className="flex flex-col">
                   <span className={`text-sm ${isSelected ? 'font-bold text-gray-900 dark:text-slate-50' : 'font-medium text-gray-700 dark:text-slate-200'}`}>
                     {emp.employee_name}
                   </span>
-                  <span className="text-[12px] text-gray-500 dark:text-slate-400 font-normal">
+                  <span className="text-caption text-gray-500 dark:text-slate-400 font-normal">
                     {emp.name}
                   </span>
                 </div>

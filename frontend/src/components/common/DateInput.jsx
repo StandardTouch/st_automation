@@ -150,7 +150,7 @@ export function DateInput({
         <div
           ref={popupRef}
           style={{ position: 'fixed', top: pos.top, left: pos.left, width: 288 }}
-          className="z-[60] rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-2xl p-3 animate-fade-in"
+          className="z-[60] rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-xl p-3 animate-fade-in"
         >
           <div className="flex items-center justify-between mb-2">
             <button type="button" onClick={() => shiftMonth(-1)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-brand-grey">
@@ -165,7 +165,7 @@ export function DateInput({
                   const y = Number(e.target.value);
                   if (y > 0 && y < 10000) setView((v) => ({ ...v, y }));
                 }}
-                className="w-16 bg-transparent text-sm font-bold text-brand-black dark:text-slate-50 focus:outline-none border-b border-transparent focus:border-brand-red [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-16 bg-transparent text-sm font-bold text-brand-black dark:text-slate-50 focus:outline-none border-b border-transparent focus:border-accent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
             <button type="button" onClick={() => shiftMonth(1)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-brand-grey">
@@ -173,7 +173,7 @@ export function DateInput({
             </button>
           </div>
 
-          <div className="grid grid-cols-7 text-center text-[12px] font-bold text-brand-grey mb-1">
+          <div className="grid grid-cols-7 text-center text-caption font-bold text-brand-grey mb-1">
             {WEEKDAYS.map((d) => <div key={d} className="py-1">{d}</div>)}
           </div>
           <div className="grid grid-cols-7 gap-0.5">
@@ -191,7 +191,7 @@ export function DateInput({
                   onClick={() => pick(ds)}
                   className={`h-9 rounded-lg text-sm font-semibold transition-colors ${
                     isSel
-                      ? 'bg-brand-red text-white'
+                      ? 'bg-accent text-white'
                       : isToday
                       ? 'border border-brand-red text-brand-red hover:bg-red-50 dark:hover:bg-slate-700'
                       : 'text-brand-black dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-700'
@@ -205,7 +205,7 @@ export function DateInput({
 
           {withTime && (
             <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-slate-700">
-              <span className="text-[13px] font-bold text-brand-grey">Time</span>
+              <span className="text-label font-bold text-brand-grey">Time</span>
               <select
                 value={parsed?.hh ?? '09'}
                 onChange={(e) => setTime(e.target.value, parsed?.mm ?? '00')}

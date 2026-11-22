@@ -45,7 +45,7 @@ export function ExitStatusPage() {
   if (error || !statusData) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center border border-slate-100">
+        <div className="bg-white p-8 rounded-xl shadow-md max-w-md w-full text-center border border-slate-100">
           <div className="w-16 h-16 bg-red-100 text-brand-red rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">!</div>
           <h2 className="text-xl font-bold text-slate-900 mb-2">Link Invalid</h2>
           <p className="text-slate-600 mb-6">{error}</p>
@@ -70,7 +70,7 @@ export function ExitStatusPage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8 sm:py-12 animate-fade-in">
+      <main className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
           <div className="bg-brand-black p-8 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-brand-red opacity-10 rounded-full -translate-y-1/2 translate-x-1/3"></div>

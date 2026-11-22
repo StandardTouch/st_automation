@@ -53,13 +53,15 @@ export function KanbanBoard({
 
   const toneClass = {
     neutral: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-700/60 dark:text-slate-200 dark:border-slate-600',
-    info: 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-500/15 dark:text-blue-200 dark:border-blue-500/30',
+    info: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-700/60 dark:text-slate-200 dark:border-slate-600',
     warn: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-500/30',
     bad: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-200 dark:border-rose-500/30',
-    good: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:border-emerald-500/30',
+    good: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-700/60 dark:text-slate-200 dark:border-slate-600',
   };
 
-  const currentColumns = activeTabStage === 'active' ? stagesConfig : decisionStages;
+  const allColumns = activeTabStage === 'active' ? stagesConfig : decisionStages;
+  const [stageFilter, setStageFilter] = React.useState(null);
+  const currentColumns = stageFilter && allColumns.some((c) => c.id === stageFilter) ? allColumns.filter((c) => c.id === stageFilter) : allColumns;
   const stagesData = pipelineData?.board || {};
   const counts = pipelineData?.counts || {};
 
@@ -68,7 +70,7 @@ export function KanbanBoard({
       {/* Header & Controls */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Candidate Pipeline</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Candidate Pipeline</h2>
           <p className="text-sm text-brand-grey">Streamlined 1-click candidate review, slot booking, and hiring decisions.</p>
         </div>
 
@@ -78,7 +80,7 @@ export function KanbanBoard({
           <div className="flex bg-gray-100 dark:bg-slate-800/50 p-1 rounded-xl shrink-0">
             <button
               onClick={() => setActiveTabStage('active')}
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all ${
+              className={`px-3.5 py-2 rounded-lg text-sm font-bold transition-all ${
                 activeTabStage === 'active' 
                   ? 'bg-white dark:bg-slate-700 text-brand-black dark:text-slate-50 shadow-sm' 
                   : 'text-brand-grey hover:text-brand-black dark:text-slate-50'
@@ -88,7 +90,7 @@ export function KanbanBoard({
             </button>
             <button
               onClick={() => setActiveTabStage('completed')}
-              className={`px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all ${
+              className={`px-3.5 py-2 rounded-lg text-sm font-bold transition-all ${
                 activeTabStage === 'completed' 
                   ? 'bg-white dark:bg-slate-700 text-brand-black dark:text-slate-50 shadow-sm' 
                   : 'text-brand-grey hover:text-brand-black dark:text-slate-50'
@@ -104,7 +106,7 @@ export function KanbanBoard({
               aria-label="Filter by job opening"
               value={selectedJob}
               onChange={(e) => setSelectedJob(e.target.value)}
-              className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-brand-black dark:text-slate-50 focus:outline-none focus:border-brand-red shrink-0"
+              className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold text-brand-black dark:text-slate-50 focus:outline-none focus:border-accent shrink-0"
             >
               <option value="all">All Job Openings</option>
               {jobOpenings.map((job) => (
@@ -122,7 +124,7 @@ export function KanbanBoard({
                 placeholder="Search candidates..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold text-brand-black dark:text-slate-50 placeholder-slate-400 focus:outline-none focus:border-brand-red"
+                className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold text-brand-black dark:text-slate-50 placeholder-slate-400 focus:outline-none focus:border-accent"
               />
             </div>
           </div>
@@ -135,32 +137,49 @@ export function KanbanBoard({
         </div>
       )}
 
-      {/* Funnel strip: exact counts per stage */}
-      <div className="flex flex-wrap items-center gap-2" aria-label="Pipeline counts">
-        {currentColumns.map((col) => (
-          <span key={col.id} className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 dark:border-slate-700 px-3 py-1 text-[13px] font-semibold text-gray-700 dark:text-slate-200">
-            <span className={`h-2 w-2 rounded-full ${col.bg} border ${col.border}`} />
-            {col.label}
-            <span className="font-bold">{counts[col.id] ?? (stagesData[col.id] || []).length}</span>
-          </span>
-        ))}
+      {/* Funnel strip: exact counts per stage. Click a stage to show only that column. */}
+      <div className="flex flex-nowrap sm:flex-wrap items-center gap-2 overflow-x-auto sm:overflow-visible hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0" role="group" aria-label="Filter pipeline by stage">
+        {allColumns.map((col) => {
+          const on = stageFilter === col.id;
+          return (
+            <button
+              key={col.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setStageFilter(on ? null : col.id)}
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-label font-semibold transition-colors ${
+                on
+                  ? 'border-accent bg-accent-soft text-accent-hover dark:bg-accent/20 dark:text-red-100'
+                  : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:border-gray-400 dark:hover:border-slate-500'
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${col.bg} border ${col.border}`} />
+              {col.label}
+              <span className="font-bold">{counts[col.id] ?? (stagesData[col.id] || []).length}</span>
+            </button>
+          );
+        })}
+        {stageFilter && (
+          <button type="button" onClick={() => setStageFilter(null)} className="px-2 py-1.5 text-label font-semibold text-accent hover:underline">
+            Show all stages
+          </button>
+        )}
       </div>
 
-      {/* Kanban Columns Grid */}
-      <div role="region" aria-label="Candidate pipeline columns" tabIndex={0} className="flex flex-nowrap gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red">
+      <div role="region" aria-label="Candidate pipeline columns" tabIndex={0} className="flex flex-nowrap items-start gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
         {currentColumns.map((col) => {
           const items = stagesData[col.id] || [];
 
           return (
             <div
               key={col.id}
-              className="flex flex-col min-w-[260px] w-[82%] sm:w-[280px] md:w-[290px] shrink-0 bg-white dark:bg-slate-800/60 rounded-2xl border border-gray-200 dark:border-slate-700/80 p-3 snap-start"
+              className={`flex flex-col min-w-[240px] w-[82%] shrink-0 sm:w-auto sm:min-w-[216px] sm:flex-1 sm:basis-[216px] sm:shrink ${currentColumns.length === 1 ? 'sm:max-w-md' : ''} bg-white dark:bg-slate-800/60 rounded-2xl border border-gray-200 dark:border-slate-700/80 p-3 snap-start`}
             >
               {/* Column Header */}
               <div className="flex items-center justify-between px-2 py-2 mb-3 border-b border-gray-200 dark:border-slate-700">
                 <div className="flex items-center gap-2">
                   <span className={`h-2.5 w-2.5 rounded-full ${col.bg} border ${col.border}`} />
-                  <span className="text-sm font-bold text-gray-800 dark:text-slate-100">{col.label}</span>
+                  <h3 className="text-sm font-bold text-gray-800 dark:text-slate-100">{col.label}</h3>
                 </div>
                 <span className="text-sm font-bold text-brand-grey bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                   {items.length}
@@ -183,7 +202,7 @@ export function KanbanBoard({
                       {/* Top Info */}
                       <div>
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-sm font-bold text-brand-black dark:text-slate-50 group-hover:text-brand-red transition-colors">
+                          <h4 className="text-sm font-bold text-brand-black dark:text-slate-50 group-hover:text-accent transition-colors">
                             {applicant.applicant_name}
                           </h4>
                           {applicant.resume_attachment && (
@@ -199,14 +218,14 @@ export function KanbanBoard({
 
                       {/* Status Details */}
                       {applicant.interview_rating_summary && (
-                        <div className="bg-emerald-50 border border-emerald-100 p-2 rounded-lg text-[13px] text-emerald-700 font-medium flex items-center gap-1.5">
-                          <Star className="h-3.5 w-3.5 text-amber-500 shrink-0 fill-amber-500" />
-                          <span className="truncate">{formatRatingSummary(applicant.interview_rating_summary)}</span>
+                        <div className="bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md text-caption text-emerald-700 font-medium flex items-center gap-1.5">
+                          <Star className="h-3 w-3 text-amber-500 shrink-0 fill-amber-500" />
+                          <span>{formatRatingSummary(applicant.interview_rating_summary)}</span>
                         </div>
                       )}
 
                       {col.id === 'rejected' && (
-                        <div className="bg-rose-50 border border-rose-100 p-2 rounded-lg text-[13px] text-rose-700 font-medium">
+                        <div className="bg-rose-50 border border-rose-100 p-2 rounded-lg text-label text-rose-700 font-medium">
                           <span className="font-bold">Reason: </span>
                           <span className="line-clamp-3">{applicant.rejection_reason || 'Not recorded'}</span>
                         </div>
@@ -216,7 +235,7 @@ export function KanbanBoard({
                       {(applicant.pipeline_badges || []).length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {applicant.pipeline_badges.map((b) => (
-                            <span key={b.label} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[12px] font-semibold ${toneClass[b.tone] || toneClass.neutral}`}>
+                            <span key={b.label} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-caption font-semibold ${toneClass[b.tone] || toneClass.neutral}`}>
                               {b.label}
                             </span>
                           ))}
@@ -225,7 +244,7 @@ export function KanbanBoard({
 
                       {/* Who the offer went to */}
                       {applicant.offer && (col.id === 'offer_sent' || col.id === 'selected') && (
-                        <div className="text-[13px] text-brand-grey space-y-0.5">
+                        <div className="text-label text-brand-grey space-y-0.5">
                           {applicant.offer.sent_to ? (
                             <div>Offer sent to <span className="font-semibold text-gray-700 dark:text-slate-200 break-all">{applicant.offer.sent_to}</span></div>
                           ) : (
@@ -236,39 +255,39 @@ export function KanbanBoard({
 
                       {/* Employee link on hired cards */}
                       {col.id === 'hired' && applicant.employee && (
-                        <div className="text-[13px] text-brand-grey">Employee <span className="font-semibold text-gray-700 dark:text-slate-200">{applicant.employee}</span></div>
+                        <div className="text-label text-brand-grey">Employee <span className="font-semibold text-gray-700 dark:text-slate-200">{applicant.employee}</span></div>
                       )}
 
                       {/* Interview progress */}
                       {col.id === 'interview_completed' && applicant.interview_summary?.count > 0 && (
-                        <div className="text-[13px] text-brand-grey">
+                        <div className="text-label text-brand-grey">
                           Feedback <span className="font-semibold text-gray-700 dark:text-slate-200">{applicant.interview_summary.feedback_have} of {applicant.interview_summary.feedback_need}</span>
                         </div>
                       )}
                       {col.id === 'interview_scheduled' && applicant.interview_summary?.next_time && (
-                        <div className="text-[13px] text-brand-grey flex items-center gap-1.5">
+                        <div className="text-label text-brand-grey flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 shrink-0" />
                           <span>{formatDateTime(applicant.interview_summary.next_time)}</span>
                         </div>
                       )}
 
                       {applicant.booked_slot_time && col.id !== 'interview_scheduled' && (
-                        <div className="bg-purple-50 border border-purple-100 p-2 rounded-lg text-[13px] text-purple-700 font-medium flex items-center gap-1.5">
+                        <div className="bg-purple-50 border border-purple-100 p-2 rounded-lg text-label text-purple-700 font-medium flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 shrink-0 text-purple-600" />
                           <span className="truncate">{formatDateTime(applicant.booked_slot_time)}</span>
                         </div>
                       )}
 
                       {/* Quick 1-Click Action Bar */}
-                      <div className="pt-2 border-t border-gray-200 dark:border-slate-700 flex items-center justify-between gap-2">
-                        <span className="text-[12px] text-brand-grey">
+                      <div className="pt-2 border-t border-gray-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
+                        <span className="text-caption text-brand-grey whitespace-nowrap">
                           {formatDate(applicant.creation)}
                         </span>
 
                         {col.id === 'applied' && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onShortlist(applicant); }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[13px] font-bold bg-brand-red hover:bg-red-500 text-white transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-bold whitespace-nowrap bg-accent hover:bg-accent-hover text-white transition-colors"
                           >
                             <Send className="h-3 w-3" />
                             <span>Shortlist</span>
@@ -278,7 +297,7 @@ export function KanbanBoard({
                         {(col.id === 'shortlisted' || col.id === 'awaiting_slot') && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onScheduleInterview(applicant); }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[13px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-bold whitespace-nowrap bg-accent hover:bg-accent-hover text-white transition-colors"
                           >
                             <Calendar className="h-3 w-3" />
                             <span>Schedule</span>
@@ -288,7 +307,7 @@ export function KanbanBoard({
                         {col.id === 'interview_completed' && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onOpenApplicant(applicant); }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[13px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-bold whitespace-nowrap bg-accent hover:bg-accent-hover text-white transition-colors"
                           >
                             <Eye className="h-3 w-3" />
                             <span>Review &amp; decide</span>
@@ -298,7 +317,7 @@ export function KanbanBoard({
                         {col.id === 'selected' && onOpenOffers && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onOpenOffers(applicant); }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[13px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-bold whitespace-nowrap bg-accent hover:bg-accent-hover text-white transition-colors"
                           >
                             <FileText className="h-3 w-3" />
                             <span>Open offer</span>
@@ -308,15 +327,25 @@ export function KanbanBoard({
                         {col.id === 'offer_sent' && onOpenOffers && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onOpenOffers(applicant); }}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[13px] font-bold bg-teal-600 hover:bg-teal-500 text-white transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-bold whitespace-nowrap bg-accent hover:bg-accent-hover text-white transition-colors"
                           >
                             <UserCheck className="h-3 w-3" />
                             <span>{applicant.offer?.status === 'Accepted' ? 'Complete hiring' : 'View offer'}</span>
                           </button>
                         )}
 
+                        {col.id === 'interview_scheduled' && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onOpenApplicant(applicant); }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-bold whitespace-nowrap border border-accent/40 text-accent hover:bg-accent-soft dark:hover:bg-accent/15 transition-colors"
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>View</span>
+                          </button>
+                        )}
+
                         {col.id === 'bench' && (
-                          <span className="text-[13px] font-bold text-amber-600 flex items-center gap-0.5">
+                          <span className="text-label font-bold text-amber-600 flex items-center gap-0.5">
                             Reconsider <ChevronRight className="h-3 w-3" />
                           </span>
                         )}

@@ -1,14 +1,30 @@
-import React from 'react';
-import { Briefcase, Globe, Users, Plus, CheckCircle, Clock, Trash2, Pencil } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Briefcase, Globe, Users, Plus, CheckCircle, Clock, Trash2, Pencil } from 'lucide-react';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 
-export function JobOpeningsView({ jobOpenings = [], onTogglePublish, isLoading, onNewJobOpening, onDeleteJobOpening, onEditJobOpening }) {
+export function JobOpeningsView({ jobOpenings: allJobs = [], onTogglePublish, isLoading, onNewJobOpening, onDeleteJobOpening, onEditJobOpening }) {
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [query, setQuery] = useState('');
+  const matches = {
+    all: () => true,
+    open: (j) => (j.status || 'Open') !== 'Closed',
+    closed: (j) => j.status === 'Closed',
+    published: (j) => Boolean(j.publish),
+  };
+  const filterOptions = [
+    { id: 'all', label: 'All' },
+    { id: 'open', label: 'Open' },
+    { id: 'closed', label: 'Closed' },
+    { id: 'published', label: 'On careers page' },
+  ];
+  const q = query.trim().toLowerCase();
+  const jobOpenings = allJobs.filter((j) => matches[statusFilter](j) && (!q || `${j.job_title || ''} ${j.name || ''} ${j.designation || ''} ${j.department || ''}`.toLowerCase().includes(q)));
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Job Openings</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Job Openings</h2>
           <p className="text-sm text-brand-grey">Manage open roles and career portal visibility.</p>
         </div>
 
@@ -17,17 +33,48 @@ export function JobOpeningsView({ jobOpenings = [], onTogglePublish, isLoading, 
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by status">
+        {filterOptions.map((o) => {
+          const on = statusFilter === o.id;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setStatusFilter(o.id)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label font-semibold transition-colors ${on ? 'border-accent bg-accent-soft text-accent-hover dark:bg-accent/20 dark:text-red-100' : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:border-gray-400 dark:hover:border-slate-500'}`}
+            >
+              {o.label}
+              <span className="font-bold">{allJobs.filter(matches[o.id]).length}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          aria-label="Search job openings"
+          placeholder="Search job openings..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:border-accent"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
         {jobOpenings.length === 0 ? (
           <div className="col-span-full py-12 text-center border border-dashed border-gray-200 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-800/40">
             <Briefcase className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-brand-grey">No Job Openings found in ERPNext</p>
+            <p className="text-sm font-semibold text-brand-grey">{allJobs.length === 0 ? 'No job openings yet. Create one to start receiving applications.' : 'No job openings match this filter.'}</p>
           </div>
         ) : (
           jobOpenings.map((job) => (
             <div
               key={job.name}
-              className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm shadow-gray-200/50 space-y-4 hover:shadow-md hover:border-brand-red/40 transition-all flex flex-col justify-between cursor-pointer"
+              className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm shadow-gray-200/50 space-y-4 hover:shadow-md hover:border-accent/40 transition-all flex flex-col justify-between cursor-pointer"
               onClick={() => onEditJobOpening && onEditJobOpening(job)}
             >
               <div className="space-y-2">

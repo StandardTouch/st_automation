@@ -125,9 +125,9 @@ export function RunPayrollWizard({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Run Monthly Payroll</h2>
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">Run Monthly Payroll</h2>
           <p className="text-sm text-brand-grey">
-            Execute automated salary slip generation, loan installment deductions, and bonus disbursements.
+            Execute automated salary slip generation and bonus disbursements.
           </p>
         </div>
         <Button
@@ -143,7 +143,7 @@ export function RunPayrollWizard({
       {step === 1 && (
         <div className="glass-panel rounded-3xl p-6 sm:p-8 border space-y-6 max-w-3xl mx-auto">
           <div className="flex items-center gap-3 border-b border-gray-200 dark:border-slate-700 pb-4">
-            <div className="p-3 rounded-2xl bg-indigo-50 text-brand-red border border-indigo-200">
+            <div className="p-3 rounded-2xl bg-gray-100 text-brand-red border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
               <PlayCircle className="h-6 w-6" />
             </div>
             <div>
@@ -167,17 +167,13 @@ export function RunPayrollWizard({
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-sm font-bold uppercase tracking-wider text-brand-grey">
+            <h4 className="text-sm font-bold text-brand-grey">
               What will happen in 1 click:
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700 flex items-start gap-2.5">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                 <span className="text-gray-700 dark:text-slate-200">Fetches all active employees in {company || 'company'}</span>
-              </div>
-              <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700 flex items-start gap-2.5">
-                <Check className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-gray-700 dark:text-slate-200">Auto-links active loan repayment installments</span>
               </div>
               <div className="p-3 rounded-xl bg-gray-50 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700 flex items-start gap-2.5">
                 <Check className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -191,7 +187,7 @@ export function RunPayrollWizard({
           </div>
 
           <div data-testid="run-payroll-eligibility" className="space-y-3 text-sm">
-            <h4 className="text-sm font-bold uppercase tracking-wider text-brand-grey">Who is included</h4>
+            <h4 className="text-sm font-bold text-brand-grey">Who is included</h4>
             {eligibility.loading && <p className="text-brand-grey">Checking salary structures…</p>}
             {changedNotice && (
               <p role="alert" data-testid="eligibility-changed" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900">{changedNotice}</p>
@@ -354,21 +350,21 @@ export function RunPayrollWizard({
             {/* Metric Breakdown Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
               <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/70 border border-gray-200 dark:border-slate-700">
-                <span className="text-sm font-bold text-brand-grey block uppercase">Total Gross Payout</span>
+                <span className="text-sm font-bold text-brand-grey block ">Total Gross Payout</span>
                 <span className="text-xl font-heading font-bold text-brand-black dark:text-slate-50 mt-1 block">
                   {formatCurrency(result.total_gross)}
                 </span>
               </div>
 
               <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/70 border border-gray-200 dark:border-slate-700">
-                <span className="text-sm font-bold text-brand-grey block uppercase">Total Deductions & Loans</span>
+                <span className="text-sm font-bold text-brand-grey block ">Total deductions</span>
                 <span className="text-xl font-heading font-bold text-rose-600 mt-1 block">
                   {formatCurrency(result.total_deductions)}
                 </span>
               </div>
 
               <div className="p-4 rounded-2xl bg-gray-50 dark:bg-slate-900/70 border border-gray-200 dark:border-slate-700">
-                <span className="text-sm font-bold text-brand-grey block uppercase">Net Payout Amount</span>
+                <span className="text-sm font-bold text-brand-grey block ">Net Payout Amount</span>
                 <span className="text-xl font-heading font-bold text-emerald-600 mt-1 block">
                   {formatCurrency(result.total_net_payout)}
                 </span>
@@ -397,7 +393,7 @@ export function RunPayrollWizard({
                 <button
                   onClick={() => setActiveReportTab('success')}
                   className={`px-3 py-1.5 rounded-xl text-sm font-bold transition-all ${
-                    activeReportTab === 'success' ? 'bg-brand-red text-white' : 'text-brand-grey hover:text-brand-black dark:text-slate-50'
+                    activeReportTab === 'success' ? 'bg-accent text-white' : 'text-brand-grey hover:text-brand-black dark:text-slate-50'
                   }`}
                 >
                   Succeeded ({result.successful?.length || 0})
@@ -419,7 +415,7 @@ export function RunPayrollWizard({
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey uppercase font-bold">
+                  <tr className="border-b border-gray-200 dark:border-slate-700 text-brand-grey font-bold">
                     <th className="pb-3">Employee</th>
                     <th className="pb-3">Gross Pay</th>
                     <th className="pb-3">Deductions</th>

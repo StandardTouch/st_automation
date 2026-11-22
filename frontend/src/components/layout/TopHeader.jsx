@@ -1,6 +1,7 @@
 import React from 'react';
 import { Menu, Plus, UserPlus, Gift, Building2, Search } from 'lucide-react';
 import { Button } from '../common/Button';
+import { ThemeToggle } from '../common/ThemeToggle';
 
 export function TopHeader({ 
   userProfile, 
@@ -20,7 +21,7 @@ export function TopHeader({
   const showAddCandidate = isRecruiter && (!activeTab || RECRUIT_TABS.includes(activeTab));
 
   return (
-    <header className="h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-slate-700/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
+    <header className="h-16 bg-white/80 dark:bg-slate-900/80 border-b border-gray-200 dark:border-slate-700/80 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 mr-2">
         {/* Mobile Menu Button */}
         <button
@@ -33,13 +34,13 @@ export function TopHeader({
 
         {/* Company Badge / Selector */}
         {userProfile?.companies && userProfile.companies.length > 1 ? (
-          <div className="flex items-center gap-2 min-w-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-1.5">
+          <div className="flex items-center gap-2 min-w-0 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 h-9">
             <Building2 className="h-4 w-4 text-brand-red shrink-0" />
             <select
               aria-label="Company"
               value={selectedCompany}
               onChange={(e) => setSelectedCompany(e.target.value)}
-              className="min-w-0 max-w-full truncate bg-transparent py-1.5 text-sm font-semibold text-brand-black dark:text-slate-50 focus:outline-none cursor-pointer"
+              className="min-w-0 max-w-full truncate bg-transparent text-sm font-semibold text-brand-black dark:text-slate-50 focus:outline-none cursor-pointer"
             >
               {userProfile.companies.map((c) => (
                 <option key={c.name} value={c.name} className="bg-white dark:bg-slate-800 text-brand-black dark:text-slate-50">
@@ -63,24 +64,25 @@ export function TopHeader({
           this bar. `title` keeps the action discoverable without the
           visible label. */}
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <ThemeToggle />
         <button
           type="button"
           onClick={() => window.dispatchEvent(new Event('st:open-command-palette'))}
           title="Search (Ctrl+K)"
           aria-label="Search Ctrl K"
-          className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 px-2.5 xl:px-3 py-1.5 text-sm text-brand-grey hover:border-brand-red transition-colors"
+          className="flex items-center gap-2 h-9 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 px-2.5 xl:px-3 text-sm text-brand-grey hover:border-accent transition-colors"
         >
           <Search className="h-4 w-4" />
           <span className="hidden xl:inline">Search</span>
-          <kbd className="hidden xl:inline text-[11px] font-bold border border-gray-300 dark:border-slate-600 rounded px-1.5 py-0.5">Ctrl K</kbd>
+          <kbd className="hidden xl:inline text-micro font-bold border border-gray-300 dark:border-slate-600 rounded px-1.5 py-0.5">Ctrl K</kbd>
         </button>
         {showAddCandidate && (
           <Button
             size="sm"
-            variant="outline"
+            variant="primary"
             icon={UserPlus}
             onClick={onQuickAddCandidate}
-            className="text-sm px-2.5 xl:px-3"
+            className="h-9 text-sm px-2.5 xl:px-3"
             title="Add Candidate"
             aria-label="Add Candidate"
           >
@@ -94,7 +96,7 @@ export function TopHeader({
             variant="primary"
             icon={Gift}
             onClick={onQuickAddIncentive}
-            className="text-sm px-2.5 xl:px-3"
+            className="h-9 text-sm px-2.5 xl:px-3"
             title="Quick Incentive"
             aria-label="Quick Incentive"
           >

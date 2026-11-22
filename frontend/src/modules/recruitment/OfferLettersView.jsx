@@ -13,6 +13,7 @@ import { DateInput } from '../../components/common/DateInput';
 import { useEscapeClose } from '../../components/common/useEscapeClose';
 import { Portal } from '../../components/common/Portal';
 import { DialogA11y } from '../../components/common/DialogA11y';
+import { confirmAction } from '../../components/common/ConfirmDialog';
 
 export function OfferLettersView({
   offers = [],
@@ -23,6 +24,15 @@ export function OfferLettersView({
 }) {
   const { addToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
+  const [offerStatusFilter, setOfferStatusFilter] = useState('all');
+  const offerStatusOptions = [
+    { id: 'all', label: 'All' },
+    { id: 'Draft', label: 'Draft' },
+    { id: 'Awaiting Response', label: 'Awaiting response' },
+    { id: 'Accepted', label: 'Accepted' },
+    { id: 'Rejected', label: 'Rejected' },
+  ];
+  const offerStatusCount = (id) => offers.filter((o) => id === 'all' || (o.status || 'Draft') === id).length;
   const [selectedOffer, setSelectedOffer] = useState(null);
   const [previewHtml, setPreviewHtml] = useState('');
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -111,6 +121,12 @@ export function OfferLettersView({
   };
 
   const handleOnboardOffer = async (offerName) => {
+    const target = offers.find((o) => o.name === offerName);
+    if (!(await confirmAction({
+      title: 'Onboard as employee?',
+      message: `This creates an Employee record for ${target?.applicant_name || 'the candidate'} and starts their onboarding checklist. It cannot be undone from here.`,
+      confirmLabel: 'Create employee',
+    }))) return;
     setOnboardingOffer(offerName);
     try {
       const res = await offerLetterApi.onboardFromOffer(offerName);
@@ -165,7 +181,7 @@ export function OfferLettersView({
   };
 
   const handleDeletePreset = async (roleName) => {
-    if (!confirm(`Are you sure you want to delete preset '${roleName}'?`)) return;
+    if (!(await confirmAction({ title: 'Delete preset?', message: `Delete the responsibility preset '${roleName}'? This cannot be undone.`, confirmLabel: 'Delete preset', tone: 'danger' }))) return;
     try {
       const res = await offerLetterApi.deleteResponsibilityPreset(roleName);
       addToast(res.message || `Preset '${roleName}' deleted`, 'success');
@@ -187,6 +203,7 @@ export function OfferLettersView({
 
   const filteredOffers = offers.filter(o => {
     const query = searchQuery.toLowerCase();
+    if (offerStatusFilter !== 'all' && (o.status || 'Draft') !== offerStatusFilter) return false;
     return (
       (o.applicant_name && o.applicant_name.toLowerCase().includes(query)) ||
       (o.designation && o.designation.toLowerCase().includes(query)) ||
@@ -224,6 +241,19 @@ export function OfferLettersView({
   };
 
   const handleUpdateStatus = async (offerName, newStatus) => {
+    if (newStatus === 'Accepted' || newStatus === 'Rejected') {
+      const target = offers.find((o) => o.name === offerName);
+      const accepted = newStatus === 'Accepted';
+      if (!(await confirmAction({
+        title: accepted ? 'Mark offer as accepted?' : 'Mark offer as rejected?',
+        message: `Record that ${target?.applicant_name || 'the candidate'} ${accepted ? 'accepted' : 'rejected'} offer ${offerName}. The change is saved in the offer history.`,
+        confirmLabel: accepted ? 'Mark accepted' : 'Mark rejected',
+        tone: accepted ? 'primary' : 'danger',
+      }))) {
+        if (onRefresh) onRefresh();
+        return;
+      }
+    }
     try {
       const res = await offerLetterApi.updateOfferStatus(offerName, newStatus);
       addToast(res.message || `Status updated to ${newStatus}`, 'success');
@@ -234,7 +264,12 @@ export function OfferLettersView({
   };
 
   const handleSendOffer = async (offerName) => {
-    if (!confirm('Are you sure you want to send this Offer Letter to the candidate? All HR Managers will be CC’d.')) return;
+    const target = offers?.find?.((o) => o.name === offerName);
+    if (!(await confirmAction({
+      title: 'Send offer letter?',
+      message: `${target?.applicant_name || 'The candidate'}${target?.applicant_email ? ` (${target.applicant_email})` : ''} will receive offer ${offerName} by email. All HR Managers will be copied.`,
+      confirmLabel: 'Send offer letter',
+    }))) return;
     setIsSending(true);
     try {
       const res = await offerLetterApi.sendOfferLetter(offerName);
@@ -275,7 +310,7 @@ export function OfferLettersView({
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-heading font-bold text-brand-black dark:text-slate-50 tracking-tight">
             {isHR ? 'Employment Contracts & Offer Letters' : 'My Employment Contract'}
           </h2>
           <p className="text-sm text-brand-grey">
@@ -299,6 +334,24 @@ export function OfferLettersView({
       </div>
 
       {/* Filter / Search Bar */}
+
+      {isHR && <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by status">
+        {offerStatusOptions.map((o) => {
+          const on = offerStatusFilter === o.id;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setOfferStatusFilter(o.id)}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-label font-semibold transition-colors ${on ? 'border-accent bg-accent-soft text-accent-hover dark:bg-accent/20 dark:text-red-100' : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:border-gray-400 dark:hover:border-slate-500'}`}
+            >
+              {o.label}
+              <span className="font-bold">{offerStatusCount(o.id)}</span>
+            </button>
+          );
+        })}
+      </div>}
       {isHR && (
         <div className="flex items-center gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm">
           <div className="relative flex-1">
@@ -308,7 +361,7 @@ export function OfferLettersView({
               placeholder="Search by candidate name, designation, email, or offer ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red text-brand-black dark:text-slate-50"
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent text-brand-black dark:text-slate-50"
             />
           </div>
         </div>
@@ -334,34 +387,34 @@ export function OfferLettersView({
         ) : (
           <div>
             {/* Desktop Table View */}
-            <div className="hidden xl:block overflow-x-auto">
+            <div className="hidden 2xl:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-slate-400">
-                    <th className="py-3.5 px-6">Offer ID / Date</th>
-                    <th className="py-3.5 px-6">Candidate / Employee</th>
-                    <th className="py-3.5 px-6">Designation</th>
-                    <th className="py-3.5 px-6">Stipend / Salary Range</th>
-                    <th className="py-3.5 px-6">Status</th>
-                    <th className="py-3.5 px-6 text-right">Actions</th>
+                  <tr className="border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/50 text-xs font-semibold text-gray-500 dark:text-slate-400">
+                    <th className="py-3.5 px-3">Offer ID / Date</th>
+                    <th className="py-3.5 px-3">Candidate / Employee</th>
+                    <th className="py-3.5 px-3">Designation</th>
+                    <th className="py-3.5 px-3">Stipend / Salary Range</th>
+                    <th className="py-3.5 px-3">Status</th>
+                    <th className="py-3.5 px-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-slate-700 text-sm">
                   {filteredOffers.map((offer) => (
                     <tr key={offer.name} className="hover:bg-gray-50/50 dark:hover:bg-slate-700/50 transition-colors">
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-3">
                         <div className="font-semibold whitespace-nowrap text-brand-black dark:text-slate-50">{offer.name}</div>
                         <div className="text-xs text-gray-500">{formatDate(offer.offer_date)}</div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-3">
                         <div className="font-medium text-brand-black dark:text-slate-50">{offer.applicant_name}</div>
                         <div className="text-xs text-gray-500">{offer.applicant_email || 'No email'}</div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-3">
                         <div className="font-medium text-brand-black dark:text-slate-50">{offer.designation || '-'}</div>
                         <div className="text-xs text-gray-400">Manager: {offer.reporting_manager || 'Not specified'}</div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-3">
                         <div className="text-xs font-medium text-gray-900 dark:text-slate-100">
                           Training: <span className="text-emerald-600 font-semibold">{offer.training_stipend || 'INR 5,000/mo'}</span>
                         </div>
@@ -369,7 +422,7 @@ export function OfferLettersView({
                           Post: <span className="font-semibold text-gray-700 dark:text-slate-300">{offer.salary_range || '-'}</span>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-3">
                         {isHR ? (
                           <div className="relative inline-block">
                             <select
@@ -383,6 +436,7 @@ export function OfferLettersView({
                                   : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800'
                               }`}
                             >
+                              <option value="Draft" disabled>Draft (not sent)</option>
                               <option value="Awaiting Response">Awaiting Response</option>
                               <option value="Accepted">Accepted</option>
                               <option value="Rejected">Rejected</option>
@@ -400,8 +454,8 @@ export function OfferLettersView({
                           </span>
                         )}
                       </td>
-                      <td className="py-4 px-6 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="py-4 px-3 text-right">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
                           {offer.status === 'Accepted' && (
                             offer.employee ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
@@ -454,7 +508,7 @@ export function OfferLettersView({
             </div>
 
             {/* Mobile / Tablet / narrow-laptop cards view (screens < xl, where the sidebar leaves too little width for the 6-column table) */}
-            <div className="xl:hidden divide-y divide-gray-200 dark:divide-slate-700">
+            <div className="2xl:hidden divide-y divide-gray-200 dark:divide-slate-700">
               {filteredOffers.map((offer) => (
                 <div key={offer.name} className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
@@ -474,7 +528,8 @@ export function OfferLettersView({
                             : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800'
                         }`}
                       >
-                        <option value="Awaiting Response">Awaiting Response</option>
+                        <option value="Draft" disabled>Draft (not sent)</option>
+                              <option value="Awaiting Response">Awaiting Response</option>
                         <option value="Accepted">Accepted</option>
                         <option value="Rejected">Rejected</option>
                       </select>
@@ -493,19 +548,19 @@ export function OfferLettersView({
 
                   <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-slate-800">
                     <div>
-                      <span className="text-gray-400 block text-xs uppercase font-semibold">Position</span>
+                      <span className="text-gray-400 block text-xs font-semibold">Position</span>
                       <span className="font-medium text-gray-800 dark:text-slate-200">{offer.designation || '-'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-400 block text-xs uppercase font-semibold">Offer Date</span>
+                      <span className="text-gray-400 block text-xs font-semibold">Offer Date</span>
                       <span className="font-medium text-gray-800 dark:text-slate-200">{formatDate(offer.offer_date)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-400 block text-xs uppercase font-semibold">Training Stipend</span>
+                      <span className="text-gray-400 block text-xs font-semibold">Training Stipend</span>
                       <span className="font-medium text-emerald-600">{offer.training_stipend || 'INR 5,000/mo'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-400 block text-xs uppercase font-semibold">Post Salary</span>
+                      <span className="text-gray-400 block text-xs font-semibold">Post Salary</span>
                       <span className="font-medium text-gray-800 dark:text-slate-200">{offer.salary_range || '-'}</span>
                     </div>
                   </div>
@@ -545,8 +600,8 @@ export function OfferLettersView({
 
       {/* Offer Letter Document Preview & Print Modal */}
       {selectedOffer && previewHtml && (
-        <Portal><DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-slate-700">
+        <Portal><DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-2 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-5xl h-[95vh] sm:h-[90vh] flex flex-col overflow-hidden border border-gray-200 dark:border-slate-700">
             {/* Modal Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60 gap-3">
               <div className="flex items-center gap-3">
@@ -602,8 +657,8 @@ export function OfferLettersView({
 
       {/* Generator Form Modal */}
       {isGenerateOpen && (
-        <Portal><DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4">
-          <div role="dialog" aria-modal="true" aria-label="Generate Offer Letter" className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto border border-gray-200 dark:border-slate-700">
+        <Portal><DialogA11y closeOnEscape={false}><div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/70 p-2 sm:p-4">
+          <div role="dialog" aria-modal="true" aria-label="Generate Offer Letter" className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-3xl max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto border border-gray-200 dark:border-slate-700">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/60">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-brand-red">
@@ -634,7 +689,7 @@ export function OfferLettersView({
                   <select
                     onChange={(e) => handleCandidateSelect(e.target.value)}
                     defaultValue=""
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red cursor-pointer"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent cursor-pointer"
                   >
                     <option value="">-- Choose a candidate to auto-populate details --</option>
                     {formMeta.candidates.map((c) => (
@@ -657,7 +712,7 @@ export function OfferLettersView({
                     placeholder="e.g. Candidate Full Name"
                     value={formData.candidate_name}
                     onChange={(e) => setFormData({ ...formData, candidate_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent"
                   />
                 </div>
 
@@ -671,7 +726,7 @@ export function OfferLettersView({
                     placeholder="candidate@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent"
                   />
                 </div>
 
@@ -695,7 +750,7 @@ export function OfferLettersView({
                         }
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red cursor-pointer"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent cursor-pointer"
                   >
                     <option value="">-- Select Position / Designation --</option>
                     <optgroup label="Standard Roles (With Duty Presets)">
@@ -740,7 +795,7 @@ export function OfferLettersView({
                     type="date"
                     value={formData.offer_date}
                     onChange={(e) => setFormData({ ...formData, offer_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent"
                   />
                 </div>
 
@@ -753,7 +808,7 @@ export function OfferLettersView({
                     placeholder="e.g. INR 10,000 - 15,000/month"
                     value={formData.salary_range}
                     onChange={(e) => setFormData({ ...formData, salary_range: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent"
                   />
                 </div>
 
@@ -766,7 +821,7 @@ export function OfferLettersView({
                     placeholder="e.g. INR 5,000/month"
                     value={formData.training_stipend}
                     onChange={(e) => setFormData({ ...formData, training_stipend: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent"
                   />
                 </div>
 
@@ -787,7 +842,7 @@ export function OfferLettersView({
                         setFormData({ ...formData, training_duration: val });
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red cursor-pointer"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent cursor-pointer"
                   >
                     <option value="">-- Select Duration --</option>
                     <option value="6 months">6 months (Standard)</option>
@@ -827,7 +882,7 @@ export function OfferLettersView({
                         setFormData({ ...formData, contract_duration: val });
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red cursor-pointer"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent cursor-pointer"
                   >
                     <option value="">-- Select Contract Term --</option>
                     <option value="24 Months + 6 months of Training">24 Months + 6 months of Training (Standard)</option>
@@ -867,7 +922,7 @@ export function OfferLettersView({
                         setFormData({ ...formData, reporting_manager: val });
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red cursor-pointer"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent cursor-pointer"
                   >
                     <option value="">-- Select Reporting Manager --</option>
                     {formMeta.managers?.map((m) => (
@@ -899,7 +954,7 @@ export function OfferLettersView({
                     placeholder="e.g. HR Signatory Full Name"
                     value={formData.hr_signatory_name}
                     onChange={(e) => setFormData({ ...formData, hr_signatory_name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent"
                   />
                 </div>
               </div>
@@ -936,7 +991,7 @@ export function OfferLettersView({
                       onClick={() => setIsManagingPresets(!isManagingPresets)}
                       className={`text-xs px-2.5 py-1 rounded-lg border font-medium flex items-center gap-1 transition-colors ${
                         isManagingPresets
-                          ? 'bg-brand-red text-white border-brand-red'
+                          ? 'bg-accent text-white border-accent'
                           : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-300 dark:border-slate-700 hover:bg-gray-50'
                       }`}
                       title="Create, save or manage presets"
@@ -978,13 +1033,13 @@ export function OfferLettersView({
                         type="button"
                         onClick={handleSaveCurrentAsPreset}
                         disabled={isSavingPreset}
-                        className="px-3 py-1.5 bg-brand-red text-white text-xs font-semibold rounded-lg hover:bg-brand-red/90 flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50"
+                        className="px-3 py-1.5 bg-accent text-white text-xs font-semibold rounded-lg hover:bg-accent-hover flex items-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50"
                       >
                         <Save className="h-3.5 w-3.5" />
                         {isSavingPreset ? 'Saving...' : 'Save Preset'}
                       </button>
                     </div>
-                    <p className="text-[11px] text-amber-700 dark:text-amber-300/80">
+                    <p className="text-micro text-amber-700 dark:text-amber-300/80">
                       Tip: Enter a role title and click "Save Preset" to save whatever is in the textarea below as a reusable preset template.
                     </p>
                   </div>
@@ -1000,7 +1055,7 @@ export function OfferLettersView({
                         onClick={() => handleSelectPreset(role)}
                         className={`text-xs px-3 py-1.5 rounded-full font-medium transition-all ${
                           selectedPreset === role
-                            ? 'bg-brand-red text-white shadow-sm'
+                            ? 'bg-accent text-white shadow-sm'
                             : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-200 dark:hover:bg-slate-700'
                         }`}
                       >
@@ -1015,9 +1070,9 @@ export function OfferLettersView({
                   value={formData.responsibilities}
                   onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })}
                   placeholder="Enter or customize the job duties (each line will be numbered on Page 2)..."
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-brand-red font-mono text-xs leading-relaxed"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-brand-red/20 focus:border-accent font-mono text-xs leading-relaxed"
                 />
-                <p className="text-[11px] text-gray-400">
+                <p className="text-micro text-gray-400">
                   Tip: Selecting a preset auto-fills standard responsibilities for the role. You can edit, add, or delete any point before generating.
                 </p>
               </div>

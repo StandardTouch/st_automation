@@ -4,11 +4,11 @@ import { Button } from '../../components/common/Button';
 
 export function FeedbackThankYouView({ onHome, onNewFeedback }) {
   return (
-    <div className="max-w-md mx-auto py-16 px-4 text-center space-y-8 animate-fade-in">
+    <div className="max-w-md mx-auto py-16 px-4 text-center space-y-8">
       {/* Success Badge */}
       <div className="relative mx-auto w-24 h-24 flex items-center justify-center">
         <div className="absolute inset-0 rounded-full bg-red-500/15 animate-ping opacity-75" />
-        <div className="relative w-20 h-20 rounded-full bg-gradient-to-tr from-brand-red to-rose-500 flex items-center justify-center text-white shadow-xl shadow-glow-red">
+        <div className="relative w-20 h-20 rounded-full bg-brand-red flex items-center justify-center text-white shadow-xl ">
           <Check className="w-10 h-10 stroke-[3]" />
         </div>
       </div>
@@ -30,7 +30,7 @@ export function FeedbackThankYouView({ onHome, onNewFeedback }) {
           variant="primary"
           size="lg"
           onClick={onHome}
-          className="w-full sm:w-auto shadow-lg shadow-glow-red"
+          className="w-full sm:w-auto shadow-md "
         >
           Back to Home
         </Button>
@@ -46,7 +46,7 @@ export function FeedbackThankYouView({ onHome, onNewFeedback }) {
 
       {/* Footer Tagline */}
       <div className="pt-10 border-t border-gray-100 dark:border-slate-800">
-        <p className="text-[11px] italic text-brand-grey dark:text-slate-400">
+        <p className="text-micro italic text-brand-grey dark:text-slate-400">
           "Better people. Better processes. A stronger StandardTouch."
         </p>
       </div>
