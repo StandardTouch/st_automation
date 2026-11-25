@@ -332,22 +332,49 @@ def _pipeline_facts(applicants):
 	return facts
 
 
-def _recent_applicant_emails(applicant_id, within_seconds=None, limit=20):
-	"""Emails (Communication records) linked to a Job Applicant, newest first."""
-	filters = {
-		"reference_doctype": "Job Applicant",
-		"reference_name": applicant_id,
-		"communication_type": "Communication",
-		"communication_medium": "Email",
-	}
+def _recent_applicant_emails(applicant_id, within_seconds=None, limit=30):
+	"""Emails (Communication records) linked to a Job Applicant, Job Offer, Interview, or recipient."""
+	app_doc = frappe.get_doc("Job Applicant", applicant_id) if frappe.db.exists("Job Applicant", applicant_id) else None
+	if not app_doc:
+		return []
+
+	offer_names = frappe.get_all("Job Offer", filters={"job_applicant": applicant_id}, pluck="name") or []
+	interview_names = frappe.get_all("Interview", filters={"job_applicant": applicant_id}, pluck="name") or []
+
+	conds = ["(reference_doctype = 'Job Applicant' AND reference_name = %(applicant_id)s)"]
+	params = {"applicant_id": applicant_id, "limit": limit}
+
+	if offer_names:
+		conds.append("(reference_doctype = 'Job Offer' AND reference_name IN %(offer_names)s)")
+		params["offer_names"] = tuple(offer_names)
+
+	if interview_names:
+		conds.append("(reference_doctype = 'Interview' AND reference_name IN %(interview_names)s)")
+		params["interview_names"] = tuple(interview_names)
+
+	if app_doc.email_id:
+		conds.append("(recipients LIKE %(app_email)s)")
+		params["app_email"] = f"%{app_doc.email_id}%"
+
+	time_cond = ""
 	if within_seconds:
-		filters["creation"] = [">=", add_to_date(now_datetime(), seconds=-within_seconds)]
-	rows = frappe.get_all(
-		"Communication",
-		filters=filters,
-		fields=["name", "subject", "recipients", "content", "creation", "delivery_status", "sent_or_received"],
-		order_by="creation desc",
-		limit=limit,
+		time_cond = "AND creation >= %(cutoff)s"
+		params["cutoff"] = add_to_date(now_datetime(), seconds=-within_seconds)
+
+	where_clause = " OR ".join(conds)
+	rows = frappe.db.sql(
+		f"""
+		SELECT name, subject, recipients, content, creation, delivery_status, sent_or_received
+		FROM `tabCommunication`
+		WHERE communication_type = 'Communication'
+		  AND communication_medium = 'Email'
+		  AND ({where_clause})
+		  {time_cond}
+		ORDER BY creation DESC
+		LIMIT %(limit)s
+		""",
+		params,
+		as_dict=True,
 	)
 	return [r for r in rows if r.get("sent_or_received") in (None, "Sent")]
 
@@ -421,6 +448,21 @@ def attach_resume(applicant_id, resume_attachment):
 		return success_response({"resume_attachment": resume_attachment}, message="Resume attached.")
 	except Exception as e:
 		return error_response("Error attaching resume", e)
+
+
+@frappe.whitelist()
+def remove_resume(applicant_id):
+	"""Remove the resume attachment of an existing candidate."""
+	try:
+		if not frappe.db.exists("Job Applicant", applicant_id):
+			return error_response("Candidate not found.")
+		if not set(frappe.get_roles()) & {"System Manager", "HR Manager", "HR User"}:
+			return error_response("You do not have permission to remove resumes.")
+		frappe.db.set_value("Job Applicant", applicant_id, "resume_attachment", None)
+		frappe.db.commit()
+		return success_response(message="Resume removed.")
+	except Exception as e:
+		return error_response("Error removing resume", e)
 
 
 def _normalize_phone(phone):
@@ -734,7 +776,7 @@ def submit_guest_feedback():
 
 
 @frappe.whitelist()
-def schedule_interview_round(applicant_id, round_number, interviewers, scheduled_time):
+def schedule_interview_round(applicant_id, round_number, interviewers, scheduled_time, custom_subject=None, custom_notes=None):
 	"""
 	Schedules a specific interview round (1, 2, or 3) for a candidate.
 	Sends calendar invites (.ics) to all selected interviewers.
@@ -827,9 +869,21 @@ def schedule_interview_round(applicant_id, round_number, interviewers, scheduled
 		site_url = frappe.utils.get_url()
 		emails_sent = 0
 		if interviewer_emails:
-			subject = f"Interview Scheduled: {round_name} with {doc.applicant_name}"
-			description = f"Please conduct {round_name} for {doc.applicant_name} ({doc.job_title}).\\nCandidate Email: {doc.email_id}\\nCandidate Phone: {doc.phone_number}"
+			subject = custom_subject.strip() if custom_subject and custom_subject.strip() else f"Interview Scheduled: {round_name} with {doc.applicant_name}"
+			description = f"Please conduct {round_name} for {doc.applicant_name} ({doc.job_title}).\nCandidate Email: {doc.email_id}\nCandidate Phone: {doc.phone_number}"
+			if custom_notes and custom_notes.strip():
+				description += f"\n\nNotes/Agenda:\n{custom_notes.strip()}"
 			ics_content = generate_ics_content(subject, description, scheduled_time)
+
+			notes_block = ""
+			if custom_notes and custom_notes.strip():
+				clean_notes = frappe.utils.strip_html(custom_notes.strip()).replace("\n", "<br/>")
+				notes_block = f"""
+				<div style="background-color: #fef3c7; padding: 14px; border-radius: 6px; margin: 16px 0; border-left: 4px solid #f59e0b;">
+				  <p style="margin: 0; font-weight: bold; color: #92400e;">📝 Special Instructions / Agenda:</p>
+				  <p style="margin: 6px 0 0 0; color: #78350f;">{clean_notes}</p>
+				</div>
+				"""
 
 			for emp, email in interviewer_emails.items():
 				token = feedback_token_map.get(emp, "")
@@ -849,6 +903,7 @@ def schedule_interview_round(applicant_id, round_number, interviewers, scheduled
 				  <div style="background-color: #f1f5f9; padding: 16px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #4f46e5;">
 				    <p style="margin: 0; font-weight: bold;">🕐 {format_datetime(scheduled_time)}</p>
 				  </div>
+				  {notes_block}
 				  <p>After the interview, please click the link below to submit your feedback:</p>
 				  <div style="text-align: center; margin: 24px 0;">
 				    <a href="{feedback_url}" style="background-color: #10b981; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Submit Interview Feedback</a>
@@ -874,6 +929,23 @@ def schedule_interview_round(applicant_id, round_number, interviewers, scheduled
 					emails_sent += 1
 				except Exception as mail_err:
 					frappe.log_error(title="st_automation Email", message=f"Failed to send interview email to {email}: {mail_err}")
+
+		if emails_sent:
+			try:
+				frappe.get_doc({
+					"doctype": "Communication",
+					"communication_type": "Communication",
+					"communication_medium": "Email",
+					"sent_or_received": "Sent",
+					"subject": subject,
+					"content": message,
+					"sender": frappe.session.user,
+					"recipients": ", ".join(interviewer_emails.values()),
+					"reference_doctype": "Job Applicant",
+					"reference_name": doc.name,
+				}).insert(ignore_permissions=True)
+			except Exception as comm_err:
+				frappe.log_error(title="st_automation Communication", message=f"Failed to log interview email: {comm_err}")
 
 		frappe.db.commit()
 		if emails_sent:
@@ -1764,7 +1836,7 @@ def toggle_job_opening(job_opening_id, publish):
 
 
 @frappe.whitelist()
-def send_offer_letter(applicant_id, file_url=None):
+def send_offer_letter(applicant_id, file_url=None, subject=None, message=None):
 	"""
 	Emails the candidate the offer letter HR uploads from their own machine
 	(via Frappe's standard `/api/method/upload_file`, then this endpoint
@@ -1779,7 +1851,14 @@ def send_offer_letter(applicant_id, file_url=None):
 	"""
 	try:
 		if not file_url:
-			return error_response("Please upload the offer letter file before sending.")
+			offer_name_existing = frappe.db.get_value("Job Offer", {"job_applicant": applicant_id})
+			if offer_name_existing:
+				file_url = frappe.db.get_value("File", {"attached_to_doctype": "Job Offer", "attached_to_name": offer_name_existing}, "file_url")
+			if not file_url:
+				file_url = frappe.db.get_value("Job Applicant", applicant_id, "resume_attachment")
+
+		if not file_url:
+			return error_response("Please upload or select an offer letter file before sending.")
 
 		if not frappe.db.exists("Job Applicant", applicant_id):
 			return error_response(f"Applicant {applicant_id} does not exist.")
@@ -1826,25 +1905,34 @@ def send_offer_letter(applicant_id, file_url=None):
 		})
 
 		role_label = offer.designation or app_doc.job_title or "this role"
-		subject = f"Offer of Employment — {role_label} at Standard Touch"
-		email_body = f"""
-		<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
-			<p>Dear {app_doc.applicant_name},</p>
-			<p>Congratulations! We're delighted to offer you the position of <strong>{role_label}</strong> at Standard Touch.</p>
-			<p>Please find your formal offer letter attached to this email. Simply reply directly to this email to let us know if you accept, or if you have any questions about the offer.</p>
-			<p style="background-color: #f8fafc; padding: 12px; border-left: 4px solid #ef4444; margin: 20px 0;">
-				<strong>Note:</strong> This offer is valid for <strong>72 hours</strong> from the time of this email. We kindly request your response within this timeframe.
-			</p>
-			<p>We're looking forward to hearing from you!</p>
-			<hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-			<p style="font-size: 12px; color: #94a3b8;">Standard Touch Recruitment Team</p>
-		</div>
-		"""
+		email_subject = subject.strip() if (subject and subject.strip()) else f"Offer of Employment — {role_label} at Standard Touch"
+		
+		if message and message.strip():
+			clean_body = message.strip()
+			if "<p>" not in clean_body and "<div>" not in clean_body:
+				formatted = clean_body.replace("\r\n", "\n").replace("\n\n", "</p><p>").replace("\n", "<br/>")
+				email_body = f"""<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;"><p>{formatted}</p><hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" /><p style="font-size: 12px; color: #94a3b8;">Standard Touch Recruitment Team</p></div>"""
+			else:
+				email_body = clean_body
+		else:
+			email_body = f"""
+			<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+				<p>Dear {app_doc.applicant_name},</p>
+				<p>Congratulations! We're delighted to offer you the position of <strong>{role_label}</strong> at Standard Touch.</p>
+				<p>Please find your formal offer letter attached to this email. Simply reply directly to this email to let us know if you accept, or if you have any questions about the offer.</p>
+				<p style="background-color: #f8fafc; padding: 12px; border-left: 4px solid #ef4444; margin: 20px 0;">
+					<strong>Note:</strong> This offer is valid for <strong>72 hours</strong> from the time of this email. We kindly request your response within this timeframe.
+				</p>
+				<p>We're looking forward to hearing from you!</p>
+				<hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+				<p style="font-size: 12px; color: #94a3b8;">Standard Touch Recruitment Team</p>
+			</div>
+			"""
 
 		frappe.sendmail(
 			recipients=[app_doc.email_id],
 			cc=get_hr_manager_emails(),
-			subject=subject,
+			subject=email_subject,
 			message=email_body,
 			attachments=attachments,
 			reference_doctype="Job Offer",
@@ -1855,6 +1943,23 @@ def send_offer_letter(applicant_id, file_url=None):
 		offer.status = "Awaiting Response"
 		offer.flags.ignore_permissions = True
 		offer.save(ignore_permissions=True)
+
+		# Log Communication record so it appears in the candidate's Sent Emails history
+		try:
+			frappe.get_doc({
+				"doctype": "Communication",
+				"communication_type": "Communication",
+				"communication_medium": "Email",
+				"sent_or_received": "Sent",
+				"subject": email_subject,
+				"content": email_body,
+				"sender": frappe.session.user,
+				"recipients": app_doc.email_id,
+				"reference_doctype": "Job Applicant",
+				"reference_name": app_doc.name,
+			}).insert(ignore_permissions=True)
+		except Exception as comm_err:
+			frappe.log_error(title="st_automation Communication", message=f"Failed to log offer letter email: {comm_err}")
 
 		app_doc.add_comment("Comment", f"Offer letter emailed to {app_doc.email_id}.")
 

@@ -7,14 +7,12 @@ candidate lands in exactly one stage; terminal states beat active ones.
 
 Precedence (first match wins):
   1 Hired  2 Rejected  3 Talent Pool / Bench  4 Offer Sent  5 Selected
-  6 Interview Completed  7 Interview Scheduled  8 Awaiting Slot Booking
-  9 Shortlisted  10 Applied
+  6 Interview Completed  7 Interview Scheduled  8 Shortlisted  9 Applied
 """
 
 ACTIVE_STAGES = [
 	("applied", "Applied"),
 	("shortlisted", "Shortlisted"),
-	("awaiting_slot", "Awaiting Slot Booking"),
 	("interview_scheduled", "Interview Scheduled"),
 	("interview_completed", "Interview Completed"),
 	("selected", "Selected"),
@@ -141,14 +139,8 @@ def derive_stage(f):
 		badges.append(("Needs decision review", "warn"))
 		return "interview_completed", badges
 
-	# 8 Awaiting Slot Booking (booking link exists; sending is not verifiable yet).
-	if f.get("booking_token"):
-		badges.append(("Link expired", "bad") if f.get("token_expired") else ("Link unverified", "neutral"))
-		return "awaiting_slot", badges
-
-	# 9 Shortlisted, 10 Applied.
-	if status == "Replied":
-		badges.append(("Needs link", "neutral"))
+	# Shortlisted, Applied.
+	if status in ("Replied", "Shortlisted"):
 		return "shortlisted", badges
 	if status == "Open":
 		return "applied", badges

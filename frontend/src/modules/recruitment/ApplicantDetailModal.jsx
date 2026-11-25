@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mail, Phone, Calendar, Briefcase, FileText, Send, 
   CheckCircle, Clock, Copy, Check, Star, AlertCircle, 
-  ExternalLink, UserCheck, ShieldAlert, Users, Video, RefreshCcw
+  ExternalLink, UserCheck, ShieldAlert, Users, Video, RefreshCcw, MessageSquare,
+  Eye, EyeOff, Trash2, Upload, X
 } from 'lucide-react';
 import { SlideOver } from '../../components/common/SlideOver';
 import { Badge } from '../../components/common/Badge';
@@ -25,7 +26,8 @@ export function ApplicantDetailModal({
   onRefresh,
   onResumeAttached,
   isActionLoading,
-  initialSchedulingOpen = false
+  initialSchedulingOpen = false,
+  onOpenFeedback,
 }) {
   const { addToast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -53,6 +55,23 @@ export function ApplicantDetailModal({
     setSelectedInterviewers([]);
     setInterviewTime('');
   }, [applicant?.name]);
+
+  const [showResumePreview, setShowResumePreview] = useState(false);
+  useEffect(() => {
+    setShowResumePreview(false);
+  }, [applicant?.name, isOpen]);
+
+  const [interviewEmailPreview, setInterviewEmailPreview] = useState({ subject: '', notes: '' });
+  useEffect(() => {
+    if (applicant) {
+      const roundLabels = { 1: 'Round 1 (Initial)', 2: 'Round 2 (Technical)', 3: 'Round 3 (Final/Managerial)' };
+      const roundName = roundLabels[interviewRound] || `Round ${interviewRound}`;
+      setInterviewEmailPreview((prev) => ({
+        ...prev,
+        subject: `Interview Scheduled: ${roundName} with ${applicant.applicant_name}`
+      }));
+    }
+  }, [applicant?.applicant_name, interviewRound]);
 
   const [scheduledInterviews, setScheduledInterviews] = useState([]);
   // Editing a scheduled interview: { id, time, interviewers } or null
@@ -82,6 +101,7 @@ export function ApplicantDetailModal({
       addToast(res.message || 'Interview updated.', 'success');
       setEditingInterview(null);
       loadInterviews();
+      onRefresh && onRefresh();
     } catch (err) {
       addToast(err.message || 'Failed to update interview', 'error');
     } finally {
@@ -96,6 +116,7 @@ export function ApplicantDetailModal({
       addToast(res.message || 'Interview cancelled.', 'success');
       setEditingInterview(null);
       loadInterviews();
+      onRefresh && onRefresh();
     } catch (err) {
       addToast(err.message || 'Failed to cancel interview', 'error');
     }
@@ -147,9 +168,12 @@ export function ApplicantDetailModal({
   const [isLoadingRejectEmail, setIsLoadingRejectEmail] = useState(false);
   const [sendRejectEmail, setSendRejectEmail] = useState(true);
 
-  // Resume upload for candidates added without one.
+  // Resume upload and management for candidates.
   const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const [isRemovingResume, setIsRemovingResume] = useState(false);
   const [resumeError, setResumeError] = useState('');
+  const resumeFileInputRef = useRef(null);
+
   const handleResumeUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
@@ -172,7 +196,47 @@ export function ApplicantDetailModal({
     }
   };
 
+  const handleRemoveResume = async () => {
+    if (!applicant?.name) return;
+    const confirmed = await confirmAction({
+      title: 'Remove resume?',
+      message: 'Are you sure you want to remove the attached resume?',
+      confirmLabel: 'Remove resume',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+
+    setIsRemovingResume(true);
+    try {
+      const res = await callApi('st_automation.api.recruitment.remove_resume', {
+        applicant_id: applicant.name,
+      });
+      addToast(res.message || 'Resume removed.', 'success');
+      setShowResumePreview(false);
+      onResumeAttached && onResumeAttached(applicant.name);
+      onRefresh && onRefresh();
+    } catch (err) {
+      addToast(err.message || 'Failed to remove resume', 'error');
+    } finally {
+      setIsRemovingResume(false);
+    }
+  };
+
   const [isOfferLetterOpen, setIsOfferLetterOpen] = useState(false);
+  const offerFileInputRef = useRef(null);
+  const [offerEmail, setOfferEmail] = useState({ subject: '', body: '' });
+  const [useExistingAttachment, setUseExistingAttachment] = useState(false);
+
+  useEffect(() => {
+    if (isOfferLetterOpen && applicant) {
+      setUseExistingAttachment(Boolean(applicant.resume_attachment));
+      const role = applicant.job_opening_title || applicant.job_title || 'this role';
+      setOfferEmail({
+        subject: `Offer of Employment — ${role} at Standard Touch`,
+        body: `Dear ${applicant.applicant_name},\n\nCongratulations! We're delighted to offer you the position of ${role} at Standard Touch.\n\nPlease find your formal offer letter attached to this email. Simply reply directly to this email to let us know if you accept, or if you have any questions about the offer.\n\nNote: This offer is valid for 72 hours from the time of this email. We kindly request your response within this timeframe.\n\nWe look forward to hearing from you!\n\nStandard Touch Recruitment Team`
+      });
+    }
+  }, [isOfferLetterOpen, applicant]);
   const [offerLetterFile, setOfferLetterFile] = useState(null);
   const [isSendingOffer, setIsSendingOffer] = useState(false);
   const [isOnboarding, setIsOnboarding] = useState(false);
@@ -210,21 +274,36 @@ export function ApplicantDetailModal({
   };
 
   const handleSendOfferLetter = async () => {
-    if (!offerLetterFile) return;
     setIsSendingOffer(true);
     try {
-      const uploaded = await uploadFile(offerLetterFile, {
-        isPrivate: true,
-        doctype: 'Job Applicant',
-        docname: applicant.name,
-      });
+      let fileUrlToSend = null;
+      if (useExistingAttachment && applicant.resume_attachment) {
+        fileUrlToSend = applicant.resume_attachment;
+      } else if (offerLetterFile) {
+        // Upload file privately without linking to Job Applicant doctype,
+        // so it never overwrites Job Applicant.resume_attachment!
+        const uploaded = await uploadFile(offerLetterFile, {
+          isPrivate: true,
+        });
+        fileUrlToSend = uploaded.file_url;
+      } else {
+        addToast('Please select or upload an offer letter file.', 'error');
+        setIsSendingOffer(false);
+        return;
+      }
+
       const res = await callApi('st_automation.api.recruitment.send_offer_letter', {
         applicant_id: applicant.name,
-        file_url: uploaded.file_url,
+        file_url: fileUrlToSend,
+        subject: offerEmail.subject,
+        message: offerEmail.body,
       });
       addToast(res.message, 'success');
       setIsOfferLetterOpen(false);
       setOfferLetterFile(null);
+      if (offerFileInputRef.current) offerFileInputRef.current.value = '';
+      loadEmails();
+      onRefresh && onRefresh();
     } catch (err) {
       addToast(err.message || 'Failed to send offer letter', 'error');
     } finally {
@@ -248,11 +327,15 @@ export function ApplicantDetailModal({
         applicant_id: applicant.name,
         round_number: interviewRound,
         interviewers: JSON.stringify(selectedInterviewers),
-        scheduled_time: interviewTime
+        scheduled_time: interviewTime,
+        custom_subject: interviewEmailPreview.subject,
+        custom_notes: interviewEmailPreview.notes,
       });
       addToast(res.message || 'Interview scheduled and calendar invites sent!', 'success');
       setIsSchedulingOpen(false);
       loadInterviews();
+      loadEmails();
+      onRefresh && onRefresh();
     } catch (err) {
       addToast(err.message || 'Failed to schedule interview', 'error');
     } finally {
@@ -297,7 +380,7 @@ export function ApplicantDetailModal({
             </div>
             <div className="min-w-0">
               <span className="text-label font-semibold text-gray-500 dark:text-slate-400 block">Current Stage</span>
-              <Badge variant="primary">{({ applied: 'Applied', shortlisted: 'Shortlisted', awaiting_slot: 'Awaiting Slot Booking', interview_scheduled: 'Interview Scheduled', interview_completed: 'Interview Completed', selected: 'Selected', offer_sent: 'Offer Sent', hired: 'Hired', bench: 'Talent Pool / Bench', rejected: 'Rejected' })[applicant.pipeline_stage] || ({ Open: 'Applied', Replied: 'Shortlisted' })[applicant.stage || applicant.status] || applicant.stage || applicant.status}</Badge>
+              <Badge variant="primary">{({ applied: 'Applied', shortlisted: 'Shortlisted', interview_scheduled: 'Interview Scheduled', interview_completed: 'Interview Completed', selected: 'Selected', offer_sent: 'Offer Sent', hired: 'Hired', bench: 'Talent Pool / Bench', rejected: 'Rejected' })[applicant.pipeline_stage] || ({ Open: 'Applied', Replied: 'Shortlisted' })[applicant.stage || applicant.status] || applicant.stage || applicant.status}</Badge>
             </div>
           </div>
         </div>
@@ -310,38 +393,69 @@ export function ApplicantDetailModal({
           </div>
         )}
 
-        {/* Emails sent to candidate */}
-        {sentEmails.length > 0 && (
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-slate-50 flex items-center gap-2 mb-3">
+        {/* Emails sent to candidate & Communications */}
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-slate-50 flex items-center gap-2">
               <Mail className="h-4 w-4 text-brand-red" />
-              Emails Sent
+              <span>Emails Sent &amp; Communications</span>
+              {sentEmails.length > 0 && (
+                <span className="text-xs font-bold text-brand-grey bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                  {sentEmails.length}
+                </span>
+              )}
             </h3>
-            <div className="space-y-2">
+            <button
+              type="button"
+              onClick={loadEmails}
+              className="text-xs font-semibold text-gray-500 hover:text-brand-red flex items-center gap-1 transition-colors cursor-pointer"
+              title="Refresh emails"
+            >
+              <RefreshCcw className="h-3 w-3" />
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          {sentEmails.length > 0 ? (
+            <div className="space-y-2.5">
               {sentEmails.map((em) => (
-                <div key={em.name} className="rounded-xl border border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 p-3">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedEmail(expandedEmail === em.name ? null : em.name)}
-                    className="w-full text-left flex items-center justify-between gap-3"
-                  >
-                    <span className="min-w-0">
+                <div key={em.name} className="rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/80 dark:bg-slate-900/60 p-3.5 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
                       <span className="text-sm font-bold text-gray-900 dark:text-slate-50 block truncate">{em.subject}</span>
-                      <span className="text-label text-gray-500 dark:text-slate-400 block truncate">To {em.recipients} · {formatDateTime(em.creation)}</span>
-                    </span>
-                    <span className="text-label font-semibold text-brand-red shrink-0">{expandedEmail === em.name ? 'Hide' : 'View'}</span>
-                  </button>
+                      <span className="text-xs text-gray-500 dark:text-slate-400 block mt-0.5">
+                        To <span className="font-semibold text-gray-700 dark:text-slate-300">{em.recipients}</span> · {formatDateTime(em.creation)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedEmail(expandedEmail === em.name ? null : em.name)}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-accent hover:text-accent-hover transition-colors shrink-0 px-2.5 py-1 rounded-lg border border-accent/20 hover:bg-accent/10 cursor-pointer"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>{expandedEmail === em.name ? 'Hide Preview' : 'Preview Email'}</span>
+                    </button>
+                  </div>
                   {expandedEmail === em.name && (
-                    <div
-                      className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700 text-sm text-gray-800 dark:text-slate-100 bg-white rounded-lg p-3 overflow-x-auto"
-                      dangerouslySetInnerHTML={{ __html: em.content }}
-                    />
+                    <div className="mt-2.5 pt-3 border-t border-gray-200 dark:border-slate-700">
+                      <div className="text-xs text-gray-500 dark:text-slate-400 mb-1.5 font-semibold">Email Content Preview:</div>
+                      <div
+                        className="text-sm text-gray-800 dark:text-slate-100 bg-white dark:bg-slate-800 rounded-xl p-3.5 border border-gray-200 dark:border-slate-700 overflow-x-auto shadow-inner"
+                        dangerouslySetInnerHTML={{ __html: em.content }}
+                      />
+                    </div>
                   )}
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="py-4 text-center border border-dashed border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50/50 dark:bg-slate-900/30">
+              <p className="text-xs text-gray-400 dark:text-slate-500">
+                No emails sent yet for this candidate. Sent emails (offer letters, interview invites, rejection letters) will appear here for preview.
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Existing Scheduled Interviews */}
         {scheduledInterviews.length > 0 && (
@@ -407,7 +521,21 @@ export function ApplicantDetailModal({
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-slate-700">
+                      <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-gray-200 dark:border-slate-700">
+                        {onOpenFeedback && (
+                          <Button
+                            variant="primary"
+                            icon={MessageSquare}
+                            onClick={() => onOpenFeedback({
+                              ...iv,
+                              interview_id: iv.name,
+                              applicant_name: applicant.applicant_name,
+                              job_title: applicant.job_opening_title || applicant.job_title
+                            })}
+                          >
+                            Submit Feedback
+                          </Button>
+                        )}
                         <Button variant="secondary" onClick={() => startEditInterview(iv)}>Reschedule / Edit</Button>
                         <Button variant="danger" onClick={() => cancelInterview(iv)}>Cancel Interview</Button>
                       </div>
@@ -494,6 +622,32 @@ export function ApplicantDetailModal({
                   </p>
                 </div>
 
+                {/* Email Invitation Preview & Customization */}
+                <div className="space-y-3 border border-gray-200 dark:border-slate-700 rounded-xl p-4 bg-gray-50 dark:bg-slate-900/50">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 block">
+                    Email Invitation Preview
+                  </span>
+                  <div>
+                    <label className="block text-label font-bold text-gray-700 dark:text-slate-200 mb-1">Email Subject</label>
+                    <input
+                      type="text"
+                      value={interviewEmailPreview.subject}
+                      onChange={(e) => setInterviewEmailPreview({ ...interviewEmailPreview, subject: e.target.value })}
+                      className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-50 focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-label font-bold text-gray-700 dark:text-slate-200 mb-1">Optional Agenda / Instructions for Interviewers</label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Focus on coding assessment and system design..."
+                      value={interviewEmailPreview.notes}
+                      onChange={(e) => setInterviewEmailPreview({ ...interviewEmailPreview, notes: e.target.value })}
+                      className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-sm text-gray-900 dark:text-slate-50 focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                </div>
+
                 <div className="flex justify-end pt-2">
                   <Button 
                     variant="primary" 
@@ -527,31 +681,121 @@ export function ApplicantDetailModal({
         {/* Inline CV / Resume Viewer */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-gray-500 dark:text-slate-400 flex items-center gap-2">
+            <h4 className="text-sm font-bold text-gray-700 dark:text-slate-300 flex items-center gap-2">
               <FileText className="h-4 w-4 text-brand-red" />
               <span>Resume / CV Document</span>
             </h4>
-            {applicant.resume_attachment && (
-              <a
-                href={applicant.resume_attachment}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-brand-red hover:text-red-700 font-semibold flex items-center gap-1"
-              >
-                <span>Open in new tab</span>
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+            {applicant.resume_attachment && showResumePreview && (
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowResumePreview(false)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-accent hover:text-accent-hover transition-colors"
+                >
+                  <EyeOff className="h-3.5 w-3.5" />
+                  <span>Hide Preview</span>
+                </button>
+                <span className="text-gray-300 dark:text-slate-600">|</span>
+                <a
+                  href={applicant.resume_attachment}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-gray-500 hover:text-brand-red dark:text-slate-400 font-semibold flex items-center gap-1 transition-colors"
+                >
+                  <span>Open</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+                <span className="text-gray-300 dark:text-slate-600">|</span>
+                <label className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white cursor-pointer transition-colors" title="Replace resume">
+                  <Upload className="h-3 w-3" />
+                  <span>{isUploadingResume ? 'Replacing...' : 'Replace'}</span>
+                  <input
+                    ref={resumeFileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    className="hidden"
+                    disabled={isUploadingResume}
+                    onChange={handleResumeUpload}
+                  />
+                </label>
+                <span className="text-gray-300 dark:text-slate-600">|</span>
+                <button
+                  type="button"
+                  disabled={isRemovingResume}
+                  onClick={handleRemoveResume}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors disabled:opacity-50"
+                  title="Remove resume"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  <span>{isRemovingResume ? 'Removing...' : 'Clear'}</span>
+                </button>
+              </div>
             )}
           </div>
 
           {applicant.resume_attachment ? (
-            <div className="h-[480px] w-full rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 overflow-hidden shadow-inner flex flex-col">
-              <iframe
-                src={applicant.resume_attachment}
-                title="Candidate Resume"
-                className="w-full h-full border-0 bg-white dark:bg-slate-800"
-              />
-            </div>
+            showResumePreview ? (
+              <div className="h-[480px] w-full rounded-2xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 overflow-hidden shadow-inner flex flex-col animate-fade-in">
+                <iframe
+                  src={applicant.resume_attachment}
+                  title="Candidate Resume"
+                  className="w-full h-full border-0 bg-white dark:bg-slate-800"
+                />
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-500/10 text-brand-red border border-red-100 dark:border-red-500/20 shrink-0">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-sm font-bold text-gray-900 dark:text-slate-50 block truncate">
+                      {applicant.resume_attachment.split('/').pop() || 'Candidate Resume'}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 block">PDF / Document attached</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    icon={Eye}
+                    onClick={() => setShowResumePreview(true)}
+                  >
+                    Preview
+                  </Button>
+                  <a
+                    href={applicant.resume_attachment}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 transition-colors"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>Open</span>
+                  </a>
+                  <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200 cursor-pointer transition-colors">
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>{isUploadingResume ? 'Replacing...' : 'Replace'}</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      className="hidden"
+                      disabled={isUploadingResume}
+                      onChange={handleResumeUpload}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={isRemovingResume}
+                    onClick={handleRemoveResume}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>{isRemovingResume ? 'Removing...' : 'Clear'}</span>
+                  </button>
+                </div>
+              </div>
+            )
           ) : (
             <div className="py-12 text-center border border-dashed border-gray-200 dark:border-slate-700 rounded-2xl bg-gray-50 dark:bg-slate-900/40">
               <FileText className="h-8 w-8 text-gray-400 dark:text-slate-500 mx-auto mb-2" />
@@ -564,6 +808,9 @@ export function ApplicantDetailModal({
               <p className="text-xs text-gray-400 mt-2">PDF, DOC, DOCX up to 5MB</p>
               {resumeError && <p className="mt-2 text-sm text-red-600 font-medium">{resumeError}</p>}
             </div>
+          )}
+          {applicant.resume_attachment && resumeError && (
+            <p className="mt-1 text-xs text-red-600 font-medium">{resumeError}</p>
           )}
         </div>
 
@@ -578,7 +825,7 @@ export function ApplicantDetailModal({
                 isLoading={isActionLoading}
                 onClick={() => onShortlist(applicant)}
               >
-                Shortlist & Move to Pipeline
+                Move to Shortlisted
               </Button>
               <Button
                 variant="danger"
@@ -599,7 +846,7 @@ export function ApplicantDetailModal({
                 isLoading={isActionLoading}
                 onClick={() => handleTriggerDecision('Select')}
               >
-                Select / Offer
+                Move to Selected
               </Button>
               <Button
                 variant="secondary"
@@ -725,7 +972,7 @@ export function ApplicantDetailModal({
               Confirm Hiring Decision: {selectedDecision}
             </h3>
             <p className="text-sm text-gray-500 dark:text-slate-400">
-              {selectedDecision === 'Select' && 'This will mark candidate as Selected and auto-draft a Job Offer.'}
+              {selectedDecision === 'Select' && 'This will mark candidate as Selected and move them to the Selected stage.'}
               {selectedDecision === 'Bench' && 'This will move candidate to Talent Pool / Bench and send them a polite "keeping you in mind" email.'}
               {selectedDecision === 'Reconsider' && 'This will move the candidate back into the active pipeline so you can make a fresh Select / Bench / Reject decision for a new role.'}
               {selectedDecision === 'Reject' && 'This will mark candidate as Rejected. Review or edit the email below before it is sent.'}
@@ -817,23 +1064,143 @@ export function ApplicantDetailModal({
           exactly as HR provided it. */}
       {isOfferLetterOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-xl space-y-4">
             <h3 className="text-lg font-bold text-gray-900 dark:text-slate-50">Send Offer Letter</h3>
             <p className="text-sm text-gray-500 dark:text-slate-400">
-              Upload the offer letter file to email to {applicant.applicant_name}. The exact file you upload here is what gets attached and sent.
+              Upload the offer letter file and review the email before sending to <span className="font-semibold text-gray-900 dark:text-slate-100">{applicant.applicant_name}</span>.
             </p>
 
             <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1.5">Offer Letter File</label>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={(e) => setOfferLetterFile(e.target.files?.[0] || null)}
-                className="w-full text-sm text-gray-700 dark:text-slate-200 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-gray-100 dark:bg-slate-800 file:text-gray-700 dark:text-slate-200 hover:file:bg-gray-200"
-              />
-              {offerLetterFile && (
-                <p className="mt-1.5 text-label text-gray-500 dark:text-slate-400">Selected: {offerLetterFile.name}</p>
+              <label className="block text-sm font-bold text-gray-700 dark:text-slate-200 mb-1.5">
+                Offer Letter Attachment *
+              </label>
+
+              {applicant.resume_attachment && useExistingAttachment ? (
+                <div className="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/70 dark:bg-emerald-950/20 space-y-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 rounded-lg bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/40 shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 block">
+                          Using Attached Document
+                        </span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-slate-100 truncate block">
+                          {applicant.resume_attachment.split('/').pop()}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUseExistingAttachment(false)}
+                      className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 shrink-0 transition-colors cursor-pointer"
+                    >
+                      Upload different file
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                    ✓ This attached file will be emailed to {applicant.applicant_name} as the offer letter.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={offerFileInputRef}
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => setOfferLetterFile(e.target.files?.[0] || null)}
+                      className="w-full text-sm text-gray-700 dark:text-slate-200 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-gray-100 dark:file:bg-slate-700 file:text-gray-700 dark:file:text-slate-200 hover:file:bg-gray-200 cursor-pointer"
+                    />
+                    {offerLetterFile && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOfferLetterFile(null);
+                          if (offerFileInputRef.current) offerFileInputRef.current.value = '';
+                        }}
+                        className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-2 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-600 hover:text-red-600 dark:bg-slate-700 dark:hover:bg-red-950/40 dark:text-slate-300 dark:hover:text-red-400 transition-colors border border-gray-200 dark:border-slate-600 cursor-pointer"
+                        title="Clear selected file"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        <span>Clear</span>
+                      </button>
+                    )}
+                  </div>
+                  {offerLetterFile && (
+                    <div className="text-xs text-gray-700 dark:text-slate-300 break-all bg-gray-50 dark:bg-slate-900 p-2.5 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="h-4 w-4 text-brand-red shrink-0" />
+                        <div className="min-w-0">
+                          <span className="font-semibold block text-gray-500 dark:text-slate-400">Selected File:</span>
+                          <span className="truncate block font-medium text-gray-900 dark:text-slate-100">{offerLetterFile.name}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOfferLetterFile(null);
+                          if (offerFileInputRef.current) offerFileInputRef.current.value = '';
+                        }}
+                        className="text-gray-400 hover:text-red-600 shrink-0 p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        title="Remove file"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                  {applicant.resume_attachment && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseExistingAttachment(true);
+                          setOfferLetterFile(null);
+                          if (offerFileInputRef.current) offerFileInputRef.current.value = '';
+                        }}
+                        className="text-xs font-semibold text-accent hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        ← Use candidate's attached document ({applicant.resume_attachment.split('/').pop()})
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
+            </div>
+
+            {/* Email Preview & Customization */}
+            <div className="space-y-3 border border-gray-200 dark:border-slate-700 rounded-xl p-4 bg-gray-50 dark:bg-slate-900/50">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 block">
+                Email Preview &amp; Customization
+              </span>
+              <div>
+                <label className="block text-label font-bold text-gray-700 dark:text-slate-200 mb-1">To</label>
+                <input
+                  type="text"
+                  disabled
+                  value={applicant.email_id || 'No email on file'}
+                  className="w-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-600 dark:text-slate-400 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-label font-bold text-gray-700 dark:text-slate-200 mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={offerEmail.subject}
+                  onChange={(e) => setOfferEmail({ ...offerEmail, subject: e.target.value })}
+                  className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-slate-50 focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label className="block text-label font-bold text-gray-700 dark:text-slate-200 mb-1">Message</label>
+                <textarea
+                  rows={8}
+                  value={offerEmail.body}
+                  onChange={(e) => setOfferEmail({ ...offerEmail, body: e.target.value })}
+                  className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-3 text-sm text-gray-900 dark:text-slate-50 focus:outline-none focus:border-accent"
+                />
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -842,6 +1209,7 @@ export function ApplicantDetailModal({
                 onClick={() => {
                   setIsOfferLetterOpen(false);
                   setOfferLetterFile(null);
+                  if (offerFileInputRef.current) offerFileInputRef.current.value = '';
                 }}
               >
                 Cancel
@@ -850,7 +1218,7 @@ export function ApplicantDetailModal({
                 variant="primary"
                 icon={Send}
                 isLoading={isSendingOffer}
-                disabled={!offerLetterFile}
+                disabled={(!offerLetterFile && !(useExistingAttachment && applicant.resume_attachment)) || !offerEmail.subject.trim() || !offerEmail.body.trim()}
                 onClick={handleSendOfferLetter}
               >
                 Send Offer Letter

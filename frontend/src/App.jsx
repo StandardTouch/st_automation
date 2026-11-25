@@ -227,6 +227,12 @@ export function AppContent() {
         recruitmentApi.getDepartments(selectedCompany),
       ]);
       setPipelineData(pipeRes.data);
+      setActiveApplicant((prev) => {
+        if (!prev) return null;
+        const all = Object.values(pipeRes.data?.board || {}).flat();
+        const found = all.find((a) => a.name === prev.name);
+        return found ? { ...prev, ...found } : prev;
+      });
       setJobOpenings(jobsRes.data?.job_openings || []);
       setDepartments(deptRes.data?.departments || []);
       setMyInterviews(intRes.data?.interviews || []);
@@ -892,6 +898,7 @@ export function AppContent() {
         onShortlist={handleShortlist}
         onDecision={handleDecision}
         onRefresh={loadRecruitment}
+        onOpenFeedback={(item) => setActiveInterviewForFeedback(item)}
         onResumeAttached={async (name) => {
           const fresh = await recruitmentApi.getApplicant(name);
           if (fresh.data) setActiveApplicant(fresh.data);

@@ -7,7 +7,7 @@ A click-minimized, responsive, modern HR operations web app built on top of ERPN
 ## Key Features
 
 ### Module A — Recruitment & Hiring
-- **Kanban Candidate Pipeline**: Visual stages (*Applied → Shortlisted → Awaiting Slot Booking → Interview Scheduled → Interview Completed → Selected / On Bench / Rejected*) with drag & drop and 1-click stage advancement.
+- **Kanban Candidate Pipeline**: Visual stages (*Applied → Shortlisted → Interview Scheduled → Interview Completed → Selected / On Bench / Rejected*) with drag & drop and 1-click stage advancement.
 - **Inline Resume / CV Viewer**: Review candidate CVs directly inside the app in a side-by-side slide-over without downloading files.
 - **Automated Candidate Slot Booking**: Generates unique, secure, token-based links allowing candidates to pick their interview slot in 1 click from their mobile or browser.
 - **Interviewer Scorecards**: Clean 1-click rating interface (1-5 stars, technical & communication ratings, structured notes, hiring recommendation).
