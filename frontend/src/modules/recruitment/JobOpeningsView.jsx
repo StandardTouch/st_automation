@@ -74,31 +74,34 @@ export function JobOpeningsView({ jobOpenings: allJobs = [], onTogglePublish, is
           jobOpenings.map((job) => (
             <div
               key={job.name}
-              className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm shadow-gray-200/50 space-y-4 hover:shadow-md hover:border-accent/40 transition-all flex flex-col justify-between cursor-pointer"
+              className="group bg-white dark:bg-slate-800 rounded-2xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm shadow-gray-200/50 space-y-4 hover:shadow-md hover:border-accent/40 transition-all flex flex-col justify-between cursor-pointer"
               onClick={() => onEditJobOpening && onEditJobOpening(job)}
             >
               <div className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-brand-black dark:text-slate-50 tracking-tight">{job.job_title || job.name}</h3>
+                  <h3 className="text-base font-bold text-brand-black dark:text-slate-50 tracking-tight truncate flex-1 min-w-0" title={job.job_title || job.name}>
+                    {job.job_title || job.name}
+                  </h3>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
                     {onEditJobOpening && (
                       <button
                         onClick={(e) => { e.stopPropagation(); onEditJobOpening(job); }}
-                        className="p-1.5 -m-1.5 text-gray-400 hover:text-brand-red transition-colors"
-                        title="Edit Job Opening" aria-label={`Edit ${job.job_title || job.name}`}
+                        className="p-1.5 text-gray-400 hover:text-brand-red hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+                        title="Edit Job Opening"
+                        aria-label={`Edit ${job.job_title || job.name}`}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
                     )}
                     <button 
                       onClick={(e) => { e.stopPropagation(); onDeleteJobOpening(job.name); }}
-                      className="p-1.5 -m-1.5 text-gray-400 hover:text-red-600 transition-colors"
-                      title="Delete Job Opening" aria-label={`Delete ${job.job_title || job.name}`}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors cursor-pointer"
+                      title="Delete Job Opening"
+                      aria-label={`Delete ${job.job_title || job.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-
                 </div>
 
                 <div className="flex items-center gap-2">

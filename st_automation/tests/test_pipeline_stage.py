@@ -25,9 +25,7 @@ class TestStage(unittest.TestCase):
 	def test_basic_stages(self):
 		self.assertEqual(stage(), "applied")
 		self.assertEqual(stage(status="Replied"), "shortlisted")
-		self.assertIn("Needs link", labels(status="Replied"))
-		self.assertEqual(stage(status="Replied", booking_token="t"), "awaiting_slot")
-		self.assertIn("Link expired", labels(status="Replied", booking_token="t", token_expired=True))
+		self.assertNotIn("Needs link", labels(status="Replied"))
 
 	def test_interview_scheduled_until_all_feedback(self):
 		iv = [{"assigned": 3, "feedback": 1, "when": NOW + timedelta(days=1)}]

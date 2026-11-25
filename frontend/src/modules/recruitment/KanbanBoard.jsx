@@ -38,7 +38,6 @@ export function KanbanBoard({
   const stagesConfig = [
     { id: 'applied', label: 'Applied', border: 'border-brand-red/40', bg: 'bg-red-500/10' },
     { id: 'shortlisted', label: 'Shortlisted', border: 'border-cyan-500/40', bg: 'bg-cyan-500/10' },
-    { id: 'awaiting_slot', label: 'Awaiting Slot Booking', border: 'border-sky-500/40', bg: 'bg-sky-500/10' },
     { id: 'interview_scheduled', label: 'Interview Scheduled', border: 'border-purple-500/40', bg: 'bg-purple-500/10' },
     { id: 'interview_completed', label: 'Interview Completed', border: 'border-indigo-500/40', bg: 'bg-indigo-500/10' },
     { id: 'selected', label: 'Selected', border: 'border-emerald-500/40', bg: 'bg-emerald-500/10' },
@@ -64,6 +63,7 @@ export function KanbanBoard({
   const currentColumns = stageFilter && allColumns.some((c) => c.id === stageFilter) ? allColumns.filter((c) => c.id === stageFilter) : allColumns;
   const stagesData = pipelineData?.board || {};
   const counts = pipelineData?.counts || {};
+  const totalCount = allColumns.reduce((sum, col) => sum + (counts[col.id] ?? (stagesData[col.id] || []).length), 0);
 
   return (
     <div className="space-y-6">
@@ -137,33 +137,59 @@ export function KanbanBoard({
         </div>
       )}
 
-      {/* Funnel strip: exact counts per stage. Click a stage to show only that column. */}
-      <div className="flex flex-nowrap sm:flex-wrap items-center gap-2 overflow-x-auto sm:overflow-visible hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0" role="group" aria-label="Filter pipeline by stage">
+      {/* Stage Filter Toolbar: clearly labeled interactive filter buttons */}
+      <div className="p-2 sm:p-2.5 rounded-2xl bg-gray-50/90 dark:bg-slate-900/60 border border-gray-200/80 dark:border-slate-800 flex flex-wrap items-center gap-2 shadow-xs" role="toolbar" aria-label="Filter pipeline by stage">
+        <div className="flex items-center gap-1.5 px-2 text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 shrink-0">
+          <Filter className="h-3.5 w-3.5 text-brand-red" />
+          <span>Stage Filter:</span>
+        </div>
+
+        {/* All Stages chip */}
+        <button
+          type="button"
+          aria-pressed={!stageFilter}
+          onClick={() => setStageFilter(null)}
+          title="Show all stage columns"
+          className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-bold transition-all shadow-xs cursor-pointer ${
+            !stageFilter
+              ? 'bg-brand-red text-white shadow-sm ring-2 ring-brand-red/20'
+              : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700'
+          }`}
+        >
+          <span>All Stages</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${!stageFilter ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'}`}>
+            {totalCount}
+          </span>
+        </button>
+
+        {/* Individual stage filter chips */}
         {allColumns.map((col) => {
           const on = stageFilter === col.id;
+          const count = counts[col.id] ?? (stagesData[col.id] || []).length;
           return (
             <button
               key={col.id}
               type="button"
               aria-pressed={on}
               onClick={() => setStageFilter(on ? null : col.id)}
-              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-label font-semibold transition-colors ${
+              title={on ? `Currently filtering by ${col.label} (click to show all)` : `Filter to ${col.label} only`}
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition-all shadow-xs cursor-pointer ${
                 on
-                  ? 'border-accent bg-accent-soft text-accent-hover dark:bg-accent/20 dark:text-red-100'
-                  : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:border-gray-400 dark:hover:border-slate-500'
+                  ? 'border border-brand-red bg-brand-red/10 text-brand-red dark:bg-red-950/40 dark:border-red-500 dark:text-red-300 shadow-sm ring-2 ring-brand-red/20 font-bold'
+                  : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-200 hover:border-brand-red/40 hover:bg-red-50/40 dark:hover:bg-slate-700'
               }`}
             >
               <span className={`h-2 w-2 rounded-full ${col.bg} border ${col.border}`} />
-              {col.label}
-              <span className="font-bold">{counts[col.id] ?? (stagesData[col.id] || []).length}</span>
+              <span>{col.label}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                on ? 'bg-brand-red text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300'
+              }`}>
+                {count}
+              </span>
+              {on && <XCircle className="h-3.5 w-3.5 ml-0.5 text-brand-red hover:text-red-700" />}
             </button>
           );
         })}
-        {stageFilter && (
-          <button type="button" onClick={() => setStageFilter(null)} className="px-2 py-1.5 text-label font-semibold text-accent hover:underline">
-            Show all stages
-          </button>
-        )}
       </div>
 
       <div role="region" aria-label="Candidate pipeline columns" tabIndex={0} className="flex flex-nowrap items-start gap-3 overflow-x-auto pb-4 snap-x hide-scrollbar focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
@@ -187,7 +213,7 @@ export function KanbanBoard({
               </div>
 
               {/* Cards List */}
-              <div className="flex-1 space-y-3 overflow-y-auto max-h-[calc(100vh-280px)] px-1 pb-2 pt-1 -mx-1 hide-scrollbar">
+              <div className="flex-1 space-y-3 overflow-y-auto max-h-[calc(100vh-280px)] px-1 pb-2 pt-1 -mx-1 custom-scrollbar pr-1.5">
                 {items.length === 0 ? (
                   <div className="py-8 text-center border border-dashed border-gray-200 dark:border-slate-700 rounded-xl">
                     <p className="text-sm text-brand-grey">No applicants</p>
@@ -294,7 +320,7 @@ export function KanbanBoard({
                           </button>
                         )}
 
-                        {(col.id === 'shortlisted' || col.id === 'awaiting_slot') && (
+                        {col.id === 'shortlisted' && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onScheduleInterview(applicant); }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-bold whitespace-nowrap bg-accent hover:bg-accent-hover text-white transition-colors"
@@ -354,6 +380,15 @@ export function KanbanBoard({
                   ))
                 )}
               </div>
+
+              {/* Scroll indicator when column has multiple cards */}
+              {items.length > 3 && (
+                <div className="pt-2 pb-0.5 text-center border-t border-gray-100 dark:border-slate-700/60 mt-1 shrink-0">
+                  <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                    ↕ Scroll to view all ({items.length})
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}
